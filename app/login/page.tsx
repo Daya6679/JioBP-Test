@@ -1,0 +1,70 @@
+"use client";
+import { Form, Input, Button, Card, Typography, message } from "antd";
+import { useRouter } from "next/navigation";
+import { AntdRegistry } from "@ant-design/nextjs-registry";
+
+const { Title, Text } = Typography;
+
+export default function LoginPage() {
+  const router = useRouter();
+
+  const onFinish = async (values: any) => {
+    const hide = message.loading("Logging In...", 1);
+    try {
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      });
+
+      const data = await res.json();
+      hide();
+
+      if (res.ok) {
+        message.success("Login successfull.");
+        router.push("/dashboard");
+      } else {
+        message.error(data.message || "Login failed");
+      }
+    } catch (err) {
+      hide();
+      console.error("DETAILED_FETCH_ERROR:", err);
+      message.error("Network error. Please try again.");
+    }
+  };
+
+  return (
+    <AntdRegistry>
+      <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4">
+        <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600">
+          <div className="mb-6 text-center">
+            <Title level={3} style={{ margin: 0, color: '#1d4ed8' }}>Jio-BP</Title>
+            <Text type="secondary">Login Dashboard</Text>
+          </div>
+
+          <Form layout="vertical" onFinish={onFinish} size="middle">
+            {/* <Form.Item name="name" label="Full Name" rules={[{ required: true }]}>
+              <Input placeholder="Enter your name" />
+            </Form.Item> */}
+
+            <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
+              <Input placeholder="example@jiobp.com" />
+            </Form.Item>
+
+            {/* <Form.Item name="phone" label="Phone Number" rules={[{ required: true, len: 10, message: 'Enter a valid 10-digit number' }]}>
+              <Input placeholder="10-digit mobile number" />
+            </Form.Item> */}
+
+            <Form.Item name="password" label="Password" rules={[{ required: true, min: 6 }]}>
+              <Input.Password placeholder="Create a password" />
+            </Form.Item>
+
+            <Button type="primary" htmlType="submit" block className="bg-blue-600 mt-2">
+              Login
+            </Button>
+          </Form>
+        </Card>
+      </div>
+    </AntdRegistry>
+  );
+}
