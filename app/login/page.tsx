@@ -2,6 +2,7 @@
 import { Form, Input, Button, Card, Typography, message } from "antd";
 import { useRouter } from "next/navigation";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
+import { signIn } from "next-auth/react";
 
 const { Title, Text } = Typography;
 
@@ -11,20 +12,25 @@ export default function LoginPage() {
   const onFinish = async (values: any) => {
     const hide = message.loading("Logging In...", 1);
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
+      const res = await signIn("credentials", {
+        email: values.email,
+        password: values.password,
+        redirect: false,
       });
+      // const res = await fetch("/api/auth/login", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify(values),
+      // });
 
-      const data = await res.json();
+      // const data = await res.json();
       hide();
 
-      if (res.ok) {
+      if (res?.ok) {
         message.success("Login successfull.");
         router.push("/dashboard");
       } else {
-        message.error(data.message || "Login failed");
+        message.error(res?.error || "Login failed");
       }
     } catch (err) {
       hide();
@@ -38,7 +44,9 @@ export default function LoginPage() {
       <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4">
         <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600">
           <div className="mb-6 text-center">
-            <Title level={3} style={{ margin: 0, color: '#1d4ed8' }}>Jio-BP</Title>
+            <Title level={3} style={{ margin: 0, color: "#1d4ed8" }}>
+              Jio-BP
+            </Title>
             <Text type="secondary">Login Dashboard</Text>
           </div>
 
@@ -47,7 +55,11 @@ export default function LoginPage() {
               <Input placeholder="Enter your name" />
             </Form.Item> */}
 
-            <Form.Item name="email" label="Email" rules={[{ required: true, type: 'email' }]}>
+            <Form.Item
+              name="email"
+              label="Email"
+              rules={[{ required: true, type: "email" }]}
+            >
               <Input placeholder="example@jiobp.com" />
             </Form.Item>
 
@@ -55,11 +67,20 @@ export default function LoginPage() {
               <Input placeholder="10-digit mobile number" />
             </Form.Item> */}
 
-            <Form.Item name="password" label="Password" rules={[{ required: true, min: 6 }]}>
+            <Form.Item
+              name="password"
+              label="Password"
+              rules={[{ required: true, min: 6 }]}
+            >
               <Input.Password placeholder="Create a password" />
             </Form.Item>
 
-            <Button type="primary" htmlType="submit" block className="bg-blue-600 mt-2">
+            <Button
+              type="primary"
+              htmlType="submit"
+              block
+              className="bg-blue-600 mt-2"
+            >
               Login
             </Button>
           </Form>

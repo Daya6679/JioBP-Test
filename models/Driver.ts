@@ -9,9 +9,13 @@ const DriverSchema = new mongoose.Schema(
     address: { type: String },
     isActive: { type: Boolean, default: true },
     image: { type: String },
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", // Assuming your User model is named "User"
+      required: true,
+    },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Driver ||
-  mongoose.model("Driver", DriverSchema);
+export default mongoose.models.Driver || mongoose.model("Driver", DriverSchema);
