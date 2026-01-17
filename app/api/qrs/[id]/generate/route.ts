@@ -7,7 +7,7 @@ import QRCode from "qrcode";
 
 export async function POST(
   req: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     await connectDB();
@@ -23,7 +23,10 @@ export async function POST(
       .populate("vehicleId", "vehicleNumber");
 
     if (!qrData) {
-      return NextResponse.json({ message: "QR request not found" }, { status: 404 });
+      return NextResponse.json(
+        { message: "QR request not found" },
+        { status: 404 },
+      );
     }
 
     // Clean Driver Image
@@ -50,28 +53,43 @@ export async function POST(
       ],
     };
 
-    const response = await fetch("http://15.207.229.202:8191/generatesecureqr", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const apiUrl = process.env.SECURE_QR_API_URL;
+
+    if (!apiUrl) {
+      throw new Error(
+        "SECURE_QR_API_URL is not defined in environment variables",
+      );
+    }
+
+    const response = await fetch(
+      apiUrl,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      },
+    );
 
     const result = await response.json();
-    
+
     if (!response.ok || result.status !== "success") {
-      throw new Error(result.detail || result.message || "External Service Error");
+      throw new Error(
+        result.detail || result.message || "External Service Error",
+      );
     }
 
     const secureString = result.secureQr; // Corrected key
 
     if (!secureString) {
-      throw new Error("Service returned success but 'secureQr' data is missing.");
+      throw new Error(
+        "Service returned success but 'secureQr' data is missing.",
+      );
     }
 
     // --- OPTIMIZED QR GENERATION ---
     // We change errorCorrectionLevel to 'L' to fit more data
     const qrImageBase64 = await QRCode.toDataURL(secureString, {
-      errorCorrectionLevel: 'L', // Changed from H to L for maximum capacity
+      errorCorrectionLevel: "L", // Changed from H to L for maximum capacity
       margin: 2,
       width: 600, // Increased width for better scan-ability of dense codes
     });

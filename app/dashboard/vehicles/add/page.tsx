@@ -26,13 +26,19 @@ export default function VehicleFormPage() {
           const res = await fetch(`/api/vehicles/${vehicleId}`);
           if (res.ok) {
             const data = await res.json();
-            form.setFieldsValue(data);
+            // form.setFieldsValue(data);
+            form.setFieldsValue({
+              ...data,
+              isActive: data.isActive !== undefined ? data.isActive : true,
+            });
           }
         } catch (err) {
           message.error("Failed to load vehicle details");
         }
       };
       fetchVehicle();
+    } else {
+      form.setFieldsValue({isActive: true});
     }
   }, [vehicleId, form]);
 
@@ -124,9 +130,9 @@ export default function VehicleFormPage() {
                 <Select placeholder="Select Type" size="large">
                   <Option value="Petrol">Petrol</Option>
                   <Option value="Diesel">Diesel</Option>
-                  <Option value="Electric">Electric</Option>
+                  {/* <Option value="Electric">Electric</Option>
                   <Option value="Hybrid">Hybrid</Option>
-                  <Option value="CNG">CNG</Option>
+                  <Option value="CNG">CNG</Option> */}
                 </Select>
               </Form.Item>
 
@@ -136,7 +142,7 @@ export default function VehicleFormPage() {
 
               <Form.Item label="Status" name="isActive" valuePropName="checked">
                 <div className="flex items-center gap-2">
-                   <Switch />
+                   <Switch defaultChecked />
                    <Text type="secondary">Vehicle is available for operations</Text>
                 </div>
               </Form.Item>

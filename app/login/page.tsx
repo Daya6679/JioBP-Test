@@ -83,6 +83,14 @@ export default function LoginPage() {
             >
               Login
             </Button>
+            <div className="mt-4 text-center">
+              <Text type="secondary">
+                Don&apos;t have an account?{" "}
+                <Typography.Link onClick={() => router.push("/signup")}>
+                  Sign Up
+                </Typography.Link>
+              </Text>
+            </div>
           </Form>
         </Card>
       </div>
