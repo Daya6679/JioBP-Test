@@ -31,8 +31,7 @@ export async function POST(
 
     // Clean Driver Image
     const driverImageBase64 =
-      qrData.driverId?.image?.replace(/^data:image\/[a-z]+;base64,/, "") ||
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+ip1sAAAAASUVORK5CYII=";
+      qrData.driverId?.image?.replace(/^data:image\/[a-z]+;base64,/, "");
 
     const uidString = [
       qrData.driverId?._id?.toString(),
