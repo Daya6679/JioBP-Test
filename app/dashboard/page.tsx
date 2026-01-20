@@ -1,8 +1,6 @@
+import { redirect } from 'next/navigation';
+
 export default function DashboardPage() {
-  return (
-    <>
-      <h2>Dashboard</h2>
-      <p>Welcome to the JioBP Visitor Management System</p>
-    </>
-  );
+  // Automatically send users to the Vehicles page
+  redirect('/dashboard/drivers');
 }

@@ -93,12 +93,14 @@ export async function POST(
       width: 600, // Increased width for better scan-ability of dense codes
     });
 
-    qrData.qrBase64 = qrImageBase64;
+    const cleanQRBase64 = qrImageBase64.replace(/^data:image\/[a-z]+;base64,/, "");
+
+    qrData.qrBase64 = cleanQRBase64;
     await qrData.save();
 
     return NextResponse.json({
       message: "QR generated successfully",
-      qrBase64: qrData.qrBase64,
+      qrBase64: cleanQRBase64,
     });
   } catch (error: any) {
     console.error("QR GEN ERROR:", error.message);

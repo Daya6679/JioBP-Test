@@ -16,8 +16,6 @@ import {
 import { useRouter } from "next/navigation";
 import {
   EditOutlined,
-  SearchOutlined,
-  CalendarOutlined,
   CarOutlined,
   DeleteOutlined,
   ExclamationCircleOutlined,
@@ -126,6 +124,8 @@ export default function VehiclesPage() {
     {
       title: "Make & Model",
       key: "vehicleInfo",
+      fixed: 'left' as const, // Keeps identity visible while scrolling
+      width: 200,
       render: (record: any) => (
         <Space>
           <CarOutlined
@@ -161,6 +161,7 @@ export default function VehiclesPage() {
       title: "Fuel Type",
       dataIndex: "fuelType",
       key: "fuelType",
+      responsive: ['md'] as any, // Hides on mobile to save space
       render: (type: string) => (
         <span className="capitalize">{type || "N/A"}</span>
       ),
@@ -179,6 +180,7 @@ export default function VehiclesPage() {
       title: "Created On",
       dataIndex: "createdAt",
       key: "createdAt",
+      responsive: ['lg'] as any, // Only shows on large screens
       sorter: (a: any, b: any) =>
         dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
       render: (date: string) => (
@@ -190,8 +192,10 @@ export default function VehiclesPage() {
     {
       title: "Action",
       key: "action",
+      fixed: 'right' as const, // Keeps buttons always accessible
+      width: 120,
       render: (_: any, record: any) => (
-        <Space size="middle">
+        <Space size="small">
           <Tooltip title="View Details">
             <Button
               type="text"
@@ -333,3 +337,17 @@ export default function VehiclesPage() {
     </Card>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+

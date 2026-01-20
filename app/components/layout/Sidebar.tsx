@@ -134,11 +134,11 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
           selectedKeys={[pathname]}
           style={{ borderRight: 0 }}
           items={[
-            {
-              key: "/dashboard",
-              icon: <DashboardOutlined />,
-              label: <Link href="/dashboard">Dashboard</Link>,
-            },
+            // {
+            //   key: "/dashboard",
+            //   icon: <DashboardOutlined />,
+            //   label: <Link href="/dashboard">Dashboard</Link>,
+            // },
             {
               key: "/dashboard/drivers",
               icon: <UserOutlined />,

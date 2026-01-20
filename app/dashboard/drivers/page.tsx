@@ -132,16 +132,19 @@ export default function DriversPage() {
   const columns = [
     {
       title: "Photo",
-      dataIndex: "image",
+      dataIndex: "image", 
       key: "image",
-      render: (image: string) => (
-        <Avatar
-          src={image}
-          icon={<UserOutlined />}
-          size={50}
-          className="border border-gray-200"
-        />
-      ),
+      render: (image: string) => {
+        const src = image && !image.startsWith('data:') ? `data:image/jpeg;base64,${image}` : image;
+        return (
+          <Avatar
+            src={src}
+            icon={<UserOutlined />}
+            size={50}
+            className="border border-gray-200"
+          />
+        );
+      },
     },
     {
       title: "Driver Name",
@@ -226,9 +229,10 @@ export default function DriversPage() {
             <Button
               type="link"
               icon={<EditOutlined />}
-              onClick={() =>
+              onClick={(e) => {
+                e.stopPropagation();
                 router.push(`/dashboard/drivers/add?id=${record._id}`)
-              }
+              }}
             />
           </Tooltip>
           {record.isActive && (
@@ -237,7 +241,10 @@ export default function DriversPage() {
                 type="link"
                 danger
                 icon={<DeleteOutlined />}
-                onClick={() => showDeactivateConfirm(record)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showDeactivateConfirm(record)
+                }}
               />
             </Tooltip>
           )}
@@ -307,7 +314,11 @@ export default function DriversPage() {
             {/* HEADER SECTION */}
             <Space align="center" size={20}>
               <Avatar
-                src={selectedDriver.image}
+                src={
+                  selectedDriver.image && !selectedDriver.image.startsWith('data:')
+                    ? `data:image/jpeg;base64,${selectedDriver.image}`
+                    : selectedDriver.image
+                }
                 size={96} // ✅ bigger photo
                 icon={<UserOutlined />}
               />
