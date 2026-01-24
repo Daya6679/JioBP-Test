@@ -1,5 +1,5 @@
 "use client";
-import { Form, Input, Button, Card, Typography, message } from "antd";
+import { Form, Input, Button, Card, Typography, message, Image } from "antd";
 import { useRouter } from "next/navigation";
 import { AntdRegistry } from "@ant-design/nextjs-registry";
 
@@ -38,10 +38,11 @@ export default function SignupPage() {
       <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4">
         <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600">
           <div className="mb-6 text-center">
-            <Title level={2} style={{ margin: 0, color: "#1d4ed8" }}>
-              Jio-BP
-            </Title>
-            <Text type="secondary">Portal Registration</Text>
+            <Image
+              src="./biometrik-logo.jpeg"
+              alt="biometrik-logo"
+              width={140}
+            />
           </div>
 
           <Form layout="vertical" onFinish={onFinish} size="large">

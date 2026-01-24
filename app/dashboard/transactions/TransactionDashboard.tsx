@@ -141,21 +141,20 @@ export default function TransactionDashboard() {
         amt > 0 ? <Text strong className="text-green-600">₹{amt.toLocaleString()}</Text> : <Text type="secondary">-</Text>
       ),
     },
-    {
-      title: "Action",
-      key: "action",
-      width: 80,
-      render: (_, record) => (
-        <Tooltip title="View Details">
-          <Button 
-            type="text" 
-            icon={<InfoCircleOutlined />} 
-            onClick={() => openTxModal(record)} 
-            style={}
-          />
-        </Tooltip>
-      ),
-    },
+    // {
+    //   title: "Action",
+    //   key: "action",
+    //   width: 80,
+    //   render: (_, record) => (
+    //     <Tooltip title="View Details">
+    //       <Button 
+    //         type="text" 
+    //         icon={<InfoCircleOutlined />} 
+    //         onClick={() => openTxModal(record)} 
+    //       />
+    //     </Tooltip>
+    //   ),
+    // },
   ];
 
   return (

@@ -18,6 +18,9 @@ import {
   Input,
   Statistic,
   Radio,
+  Divider,
+  Descriptions,
+  Alert,
 } from "antd";
 import {
   PlusOutlined,
@@ -25,7 +28,9 @@ import {
   EyeOutlined,
   DownloadOutlined,
   CheckCircleOutlined,
-  ClockCircleOutlined,
+  UserOutlined,
+  CarOutlined,
+  MedicineBoxOutlined,
 } from "@ant-design/icons";
 
 const { Title, Text: AntText } = Typography;
@@ -41,11 +46,18 @@ export default function QRManagementPage() {
   const [qrList, setQrList] = useState<any[]>([]);
   const [filteredQrList, setFilteredQrList] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [isRequestModalOpen, setIsRequestModalOpen] = useState(false);
-  const [qrModal, setQrModal] = useState<{ open: boolean; qrBase64?: string }>({
-    open: false,
-  });
+
+  const [qrModal, setQrModal] = useState<{
+    open: boolean;
+    qrBase64?: string;
+    driverName?: string;
+    vehicleNo?: string;
+    fuelType?: string;
+    amountOrQty?: string;
+  }>({ open: false });
 
   useEffect(() => {
     fetchInitialData();
@@ -89,6 +101,18 @@ export default function QRManagementPage() {
     }
   };
 
+  const handleVehicleChange = (vehicleId: string) => {
+    const selectedVehicle = vehicles.find((v) => v._id === vehicleId);
+    if (selectedVehicle) {
+      const validTypes = ["Petrol", "Diesel"];
+      if (validTypes.includes(selectedVehicle.fuelType)) {
+        form.setFieldsValue({ fuelType: selectedVehicle.fuelType });
+      } else {
+        form.setFieldsValue({ fuelType: undefined });
+      }
+    }
+  };
+
   const handleSearch = (value: string) => {
     const term = value.toLowerCase();
     const filtered = qrList.filter((qr) => {
@@ -105,8 +129,12 @@ export default function QRManagementPage() {
   };
 
   const createQrRequest = async (values: any) => {
+    setIsGenerating(true);
     const hideLoading = message.loading("Generating QR Code...", 0);
     try {
+      const driverObj = drivers.find((d) => d._id === values.driverId);
+      const vehicleObj = vehicles.find((v) => v._id === values.vehicleId);
+
       const submissionData = {
         driverId: values.driverId,
         vehicleId: values.vehicleId,
@@ -122,13 +150,10 @@ export default function QRManagementPage() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
+      if (!res.ok)
         throw new Error(data.message || "Failed to create QR request");
-      }
 
-      const qrId = data._id;
-      const genRes = await fetch(`/api/qrs/${qrId}/generate`, {
+      const genRes = await fetch(`/api/qrs/${data._id}/generate`, {
         method: "POST",
       });
       const genData = await genRes.json();
@@ -140,17 +165,34 @@ export default function QRManagementPage() {
         setQrModal({
           open: true,
           qrBase64: genData.qrBase64 || data.qrBase64,
+          driverName: driverObj?.name,
+          vehicleNo: vehicleObj?.vehicleNumber,
+          fuelType: values.fuelType,
+          amountOrQty:
+            values.requestType === "liters"
+              ? `${values.qty} L`
+              : `₹${values.amount}`,
         });
-
         fetchQrs();
-      } else {
-        message.error(genData.message || "Failed to generate QR");
       }
     } catch (err) {
       message.error("Error connecting to server");
     } finally {
       hideLoading();
+      setIsGenerating(false);
     }
+  };
+
+  const getSafeFilename = (name: string) =>
+    `${name.replace(/\s+/g, "_").toLowerCase()}_qr.png`;
+
+  const triggerDownload = (base64: string, name: string) => {
+    const link = document.createElement("a");
+    link.href = `data:image/png;base64,${base64}`;
+    link.download = getSafeFilename(name || "driver");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const columns = [
@@ -193,19 +235,11 @@ export default function QRManagementPage() {
     },
     {
       title: "Status",
-      render: (_: any, record: any) => {
-        if (record.isUsed)
-          return (
-            <Tag icon={<CheckCircleOutlined />} color="error">
-              Used
-            </Tag>
-          );
-        return (
-          <Tag icon={<CheckCircleOutlined />} color="success">
-            Generated
-          </Tag>
-        );
-      },
+      render: (_: any, record: any) => (
+        <Tag color={record.isUsed ? "error" : "success"}>
+          {record.isUsed ? "Used" : "Generated"}
+        </Tag>
+      ),
     },
     {
       title: "Actions",
@@ -216,15 +250,24 @@ export default function QRManagementPage() {
             icon={<EyeOutlined />}
             size="small"
             onClick={() =>
-              setQrModal({ open: true, qrBase64: record.qrBase64 })
+              setQrModal({
+                open: true,
+                qrBase64: record.qrBase64,
+                driverName: record.driverId?.name,
+                vehicleNo: record.vehicleId?.vehicleNumber,
+                fuelType: record.fuelType,
+                amountOrQty:
+                  record.qty > 0 ? `${record.qty} L` : `₹${record.amount}`,
+              })
             }
           />
-          <a
-            href={`data:image/png;base64,${record.qrBase64}`}
-            download={`qr-${record._id}.png`}
-          >
-            <Button icon={<DownloadOutlined />} size="small" />
-          </a>
+          <Button
+            icon={<DownloadOutlined />}
+            size="small"
+            onClick={() =>
+              triggerDownload(record.qrBase64, record.driverId?.name)
+            }
+          />
         </Space>
       ),
     },
@@ -250,27 +293,27 @@ export default function QRManagementPage() {
             Generate and track fuel request QR codes
           </AntText>
         </div>
+
         <Space size="middle" style={{ flexWrap: "wrap" }}>
           <Search
-            placeholder="Search driver, vehicle or nickname..."
-            allowClear
+            placeholder="Search driver or vehicle..."
             onSearch={handleSearch}
             onChange={(e) => handleSearch(e.target.value)}
             style={{ width: 300 }}
+            allowClear
           />
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            size="middle"
             onClick={() => setIsRequestModalOpen(true)}
           >
-            New QR Request
+            New Request
           </Button>
         </Space>
       </div>
 
+      {/* RESTORED: Statistic Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        {/* Removed Pending Requests Card */}
         <Col xs={24} sm={12}>
           <Card className="shadow-sm">
             <Statistic
@@ -293,13 +336,17 @@ export default function QRManagementPage() {
         </Col>
       </Row>
 
-      <Card className="shadow-sm" style={{ overflowX: "auto" }}>
+      <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
         <Table
           loading={loading}
           rowKey="_id"
           columns={columns}
           dataSource={filteredQrList.filter((q) => !q.isUsed)}
-          pagination={{ pageSize: 8 }}
+          pagination={{
+            defaultPageSize: 10,
+            showSizeChanger: true,
+            pageSizeOptions: [10, 20, 50, 100],
+          }}
         />
       </Card>
 
@@ -312,26 +359,19 @@ export default function QRManagementPage() {
         }}
         footer={null}
         centered
-        width={500}
       >
         <Form
           form={form}
           layout="vertical"
           onFinish={createQrRequest}
-          style={{ marginTop: "10px" }}
           initialValues={{ requestType: "liters" }}
         >
           <Form.Item
             name="driverId"
-            label="Authorized Driver"
-            rules={[{ required: true, message: "Select the driver" }]}
+            label="Driver"
+            rules={[{ required: true }]}
           >
-            <Select
-              placeholder="Select Driver"
-              showSearch
-              optionFilterProp="children"
-              size="large"
-            >
+            <Select placeholder="Select Driver">
               {drivers.map((d) => (
                 <Option key={d._id} value={d._id}>
                   {d.name}
@@ -339,137 +379,160 @@ export default function QRManagementPage() {
               ))}
             </Select>
           </Form.Item>
-
           <Form.Item
             name="vehicleId"
-            label="Assigned Vehicle Unit"
-            rules={[{ required: true, message: "Select the vehicle" }]}
+            label="Vehicle"
+            rules={[{ required: true }]}
           >
-            <Select
-              placeholder="Select Vehicle"
-              showSearch
-              optionFilterProp="children"
-              size="large"
-            >
+            <Select placeholder="Select Vehicle" onChange={handleVehicleChange}>
               {vehicles.map((v) => (
                 <Option key={v._id} value={v._id}>
-                  {v.nickname
-                    ? `${v.vehicleNumber} (${v.nickname})`
-                    : v.vehicleNumber}
+                  {v.vehicleNumber}
                 </Option>
               ))}
             </Select>
           </Form.Item>
-
           <Row gutter={16}>
             <Col span={24}>
-              <Form.Item name="requestType" label="Transaction Type">
+              <Form.Item name="requestType" label="Type">
                 <Radio.Group optionType="button" buttonStyle="solid" block>
-                  <Radio value="liters">Set Liters</Radio>
-                  <Radio value="amount">Set Amount</Radio>
+                  <Radio value="liters">Liters</Radio>
+                  <Radio value="amount">Amount</Radio>
                 </Radio.Group>
               </Form.Item>
             </Col>
-
-            <Col xs={24} sm={12}>
+            <Col span={12}>
               <Form.Item
                 name="fuelType"
                 label="Fuel Grade"
                 rules={[{ required: true }]}
               >
-                <Select placeholder="Select Type" size="large">
+                <Select placeholder="Select">
                   <Option value="Petrol">Petrol</Option>
                   <Option value="Diesel">Diesel</Option>
                 </Select>
               </Form.Item>
             </Col>
-
-            {requestType === "liters" && (
-              <Col xs={24} sm={12}>
+            <Col span={12}>
+              {requestType === "liters" ? (
                 <Form.Item
                   name="qty"
-                  label="Fuel Volume (Liters)"
-                  rules={[{ required: true, message: "Required" }]}
+                  label="Qty (L)"
+                  rules={[{ required: true }]}
                 >
-                  <InputNumber
-                    min={1}
-                    style={{ width: "100%" }}
-                    placeholder="Qty"
-                    size="large"
-                  />
+                  <InputNumber min={1} style={{ width: "100%" }} />
                 </Form.Item>
-              </Col>
-            )}
-
-            {requestType === "amount" && (
-              <Col xs={24} sm={12}>
+              ) : (
                 <Form.Item
                   name="amount"
-                  label="Billing Amount (₹)"
-                  rules={[{ required: true, message: "Required" }]}
+                  label="Amount (₹)"
+                  rules={[{ required: true }]}
                 >
-                  <InputNumber
-                    min={1}
-                    style={{ width: "100%" }}
-                    placeholder="Enter amount"
-                    size="large"
-                  />
+                  <InputNumber min={1} style={{ width: "100%" }} />
                 </Form.Item>
-              </Col>
-            )}
+              )}
+            </Col>
           </Row>
-
-          <div style={{ display: "flex", gap: "12px", marginTop: "24px" }}>
-            <Button
-              style={{ flex: 1 }}
-              onClick={() => setIsRequestModalOpen(false)}
-              size="large"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="primary"
-              htmlType="submit"
-              style={{ flex: 2 }}
-              size="large"
-              icon={<QrcodeOutlined />}
-            >
-              Generate QR
-            </Button>
-          </div>
+          <Button
+            type="primary"
+            htmlType="submit"
+            block
+            size="large"
+            loading={isGenerating}
+          >
+            Generate QR
+          </Button>
         </Form>
       </Modal>
 
       <Modal
         open={qrModal.open}
-        footer={[
-          <Button
-            key="download"
-            type="primary"
-            icon={<DownloadOutlined />}
-            href={`data:image/png;base64,${qrModal.qrBase64}`}
-            download="qr-code.png"
-          >
-            Download
-          </Button>,
-        ]}
         onCancel={() => setQrModal({ open: false })}
+        footer={null}
+        width={750}
         title="Fuel Authorization QR"
         centered
       >
-        <div style={{ textAlign: "center", padding: "20px" }}>
-          {qrModal.qrBase64 && (
-            <img
-              src={`data:image/png;base64,${qrModal.qrBase64}`} // Add prefix here
-              alt="QR"
-              style={{
-                width: "250px",
-                border: "1px solid #f0f0f0",
-                borderRadius: "8px",
-              }}
+        <Row gutter={24} align="middle">
+          <Col
+            span={10}
+            style={{ textAlign: "center", borderRight: "1px solid #f0f0f0" }}
+          >
+            {qrModal.qrBase64 && (
+              <img
+                src={`data:image/png;base64,${qrModal.qrBase64}`}
+                alt="QR"
+                style={{
+                  width: "100%",
+                  borderRadius: "8px",
+                  border: "1px solid #eee",
+                  padding: "10px",
+                  background: "#fff",
+                }}
+              />
+            )}
+            <Button
+              type="primary"
+              block
+              icon={<DownloadOutlined />}
+              style={{ marginTop: 16 }}
+              onClick={() =>
+                triggerDownload(qrModal.qrBase64!, qrModal.driverName!)
+              }
+            >
+              Download QR
+            </Button>
+          </Col>
+          <Col span={14}>
+            <Descriptions
+              title="Authorization Details"
+              bordered
+              column={1}
+              size="small"
+            >
+              <Descriptions.Item
+                label={
+                  <>
+                    <UserOutlined style={{ color: "#1890ff" }} /> Driver
+                  </>
+                }
+              >
+                {qrModal.driverName}
+              </Descriptions.Item>
+              <Descriptions.Item
+                label={
+                  <>
+                    <CarOutlined style={{ color: "#1890ff" }} /> Vehicle
+                  </>
+                }
+              >
+                {qrModal.vehicleNo}
+              </Descriptions.Item>
+              <Descriptions.Item
+                label={
+                  <>
+                    <MedicineBoxOutlined style={{ color: "#1890ff" }} /> Fuel
+                    Grade
+                  </>
+                }
+              >
+                {qrModal.fuelType}
+              </Descriptions.Item>
+              <Descriptions.Item label="Authorized Limit">
+                <AntText strong type="success" style={{ fontSize: "16px" }}>
+                  {qrModal.amountOrQty}
+                </AntText>
+              </Descriptions.Item>
+            </Descriptions>
+            <Divider dashed />
+            <Alert
+              title="Security Note"
+              description="This QR is valid for a single transaction. Please ensure the driver presents this at the terminal."
+              type="info"
+              showIcon
             />
-          )}
-        </div>
+          </Col>
+        </Row>
       </Modal>
     </div>
   );

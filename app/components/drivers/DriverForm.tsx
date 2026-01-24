@@ -34,17 +34,13 @@ export default function DriverForm({
   initialValues,
   onSubmit,
   isLoading,
+  isEditing, // 1. Accept the new prop here
 }: any) {
   const router = useRouter();
 
-  /**
-   * Helper: Prepends the necessary Base64 metadata prefix if it's missing.
-   * This ensures the browser <img> tag can render the raw string from your database.
-   */
   const ensureDataUrl = (str: string) => {
     if (!str) return "";
     if (str.startsWith("data:")) return str;
-    // Using image/png to match your database screenshot requirement
     return `data:image/png;base64,${str}`;
   };
 
@@ -53,7 +49,6 @@ export default function DriverForm({
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Sync state if initialValues changes (important for async data loading)
   useEffect(() => {
     if (initialValues?.image) {
       setImageUrl(ensureDataUrl(initialValues.image));
@@ -81,8 +76,6 @@ export default function DriverForm({
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
       context?.drawImage(video, 0, 0, canvas.width, canvas.height);
-      
-      // Keep full Data URL in local state so the preview renders immediately
       const data = canvas.toDataURL("image/png");
       setImageUrl(data);
       stopCamera();
@@ -97,15 +90,9 @@ export default function DriverForm({
 
   const onFinishInternal = (values: any) => {
     let finalBase64 = imageUrl;
-    
-    /**
-     * MANAGER REQUIREMENT: Remove metadata prefix before storing in DB.
-     * We strip 'data:image/png;base64,' to leave only the raw string.
-     */
     if (imageUrl.includes(",")) {
       finalBase64 = imageUrl.split(",")[1];
     }
-
     onSubmit({ ...values, image: finalBase64 });
   };
 
@@ -240,21 +227,24 @@ export default function DriverForm({
                 </Col>
               </Row>
 
-              <Form.Item name="address" label="Permanent Address (optional)">
+              <Form.Item name="address" label="Permanent Address">
                 <Input.TextArea placeholder="Enter full residential address" rows={3} />
               </Form.Item>
 
-              <Row align="middle" style={{ marginTop: "16px" }}>
-                <Col span={24}>
-                  <Text style={{ display: "block", marginBottom: "8px" }}>Status</Text>
-                  <Form.Item name="isActive" valuePropName="checked" noStyle>
-                    <Space>
-                      <Switch defaultChecked />
-                      <Text type="secondary">Authorized to log in immediately?</Text>
-                    </Space>
-                  </Form.Item>
-                </Col>
-              </Row>
+              {/* 2. CONDITIONAL RENDERING: Hide Status section if isEditing is true */}
+              {!isEditing && (
+                <Row align="middle" style={{ marginTop: "16px" }}>
+                  <Col span={24}>
+                    <Text style={{ display: "block", marginBottom: "8px" }}>Status</Text>
+                    <Form.Item name="isActive" valuePropName="checked" noStyle>
+                      <Space>
+                        <Switch defaultChecked />
+                        {/* <Text type="secondary">Authorized to log in immediately?</Text> */}
+                      </Space>
+                    </Form.Item>
+                  </Col>
+                </Row>
+              )}
 
               <Divider style={{ margin: "24px 0" }} />
 

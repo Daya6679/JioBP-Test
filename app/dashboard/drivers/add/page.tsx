@@ -67,5 +67,5 @@ export default function AddDriverPage() {
     );
   }
 
-  return <DriverForm initialValues={data} onSubmit={onSubmit} isLoading={isSaving} />;
+  return <DriverForm initialValues={data} onSubmit={onSubmit} isLoading={isSaving} isEditing={!!id} />;
 }
