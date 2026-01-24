@@ -1,3 +1,4 @@
+// api/transaction/route.ts
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
@@ -9,7 +10,6 @@ export async function POST(req: Request) {
   try {
     await connectDB();
     
-    // 1. Identify the manager/user making the transaction
     const session = await getServerSession(authOptions);
     if (!session || !session.user?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
@@ -18,12 +18,15 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { driverId, vehicleId, qrId, qty, amount } = body;
 
-    // 2. Validation
-    if (!driverId || !vehicleId || !qrId || !qty || !amount) {
-      return NextResponse.json({ message: "Missing required transaction data" }, { status: 400 });
+    // Validation: QR is no longer required, but driver/vehicle and one value are.
+    if (!driverId || !vehicleId || !qrId || (!qty && !amount)) {
+      return NextResponse.json(
+        { message: "Missing required data: Driver, Vehicle, and Qty/Amount are needed." }, 
+        { status: 400 }
+      );
     }
 
-    // 3. Check if QR is already used
+    // 2. CHECK IF QR IS ALREADY USED
     const qrRecord = await QRRequest.findById(qrId);
     if (!qrRecord) {
       return NextResponse.json({ message: "Invalid QR Code" }, { status: 404 });
@@ -32,17 +35,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "This QR Code has already been used" }, { status: 400 });
     }
 
-    // 4. Create the Transaction Record
     const newTransaction = await Transaction.create({
       driverId,
       vehicleId,
       qrId,
-      qty,
-      amount,
-      userId: session.user.id, // Linking to the manager who scanned it
+      qty: qty || 0,
+      amount: amount || 0,
+      userId: session.user.id, 
     });
 
-    // 5. Mark the QR as used (Soft Delete from active list)
+    // 4. MARK THE QR AS USED (Prevent reuse)
     qrRecord.isUsed = true;
     await qrRecord.save();
 

@@ -130,6 +130,7 @@ import {
   CarOutlined,
   QrcodeOutlined,
   LogoutOutlined,
+  HistoryOutlined,
 } from "@ant-design/icons";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
@@ -190,6 +191,11 @@ export default function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
       key: "/dashboard/qr",
       icon: <QrcodeOutlined />,
       label: <Link href="/dashboard/qr">Generate QR</Link>,
+    },
+    {
+      key: "/dashboard/transactions",
+      icon: <HistoryOutlined />,
+      label: <Link href="/dashboard/transactions">Transactions</Link>,
     },
   ];
 

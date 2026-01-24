@@ -4,7 +4,7 @@ const TransactionSchema = new mongoose.Schema(
   {
     driverId: { type: mongoose.Schema.Types.ObjectId, ref: "Driver", required: true },
     vehicleId: { type: mongoose.Schema.Types.ObjectId, ref: "Vehicle", required: true },
-    qrId: { type: mongoose.Schema.Types.ObjectId, ref: "QRRequest", required: true },
+    qrId: { type: mongoose.Schema.Types.ObjectId, ref: "QRRequest" },
     qty: { type: Number, required: true },
     amount: { type: Number, required: true },
     userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
