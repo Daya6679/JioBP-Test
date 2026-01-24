@@ -21,6 +21,7 @@ import {
   Divider,
   Descriptions,
   Alert,
+  notification,
 } from "antd";
 import {
   PlusOutlined,
@@ -129,11 +130,38 @@ export default function QRManagementPage() {
   };
 
   const createQrRequest = async (values: any) => {
-    setIsGenerating(true);
-    const hideLoading = message.loading("Generating QR Code...", 0);
+    let hideLoading: (() => void) | null = null;
+    // setIsGenerating(true);
+    // const hideLoading = message.loading("Generating QR Code...", 0);
     try {
       const driverObj = drivers.find((d) => d._id === values.driverId);
       const vehicleObj = vehicles.find((v) => v._id === values.vehicleId);
+
+      const today = new Date();
+      const expiryDate = driverObj?.licenseExpiry
+        ? new Date(driverObj.licenseExpiry)
+        : null;
+
+      const isExpired = expiryDate && expiryDate < today;
+      const isStatusInvalid =
+        driverObj?.licenseStatus === "Expired" ||
+        driverObj?.licenseStatus === "Suspended";
+
+      if (!driverObj || isStatusInvalid || isExpired) {
+        notification.error({
+          message: "License Validation Failed",
+          description: `Cannot generate QR. Driver ${driverObj?.name || ""}'s license is either expired or invalid. Please update the driver records.`,
+          placement: "topRight",
+        });
+        return; // Stop the execution here
+      }
+
+      // 3. PROCEED IF VALID
+      setIsGenerating(true);
+      hideLoading = message.loading(
+        "Validating & Generating QR Code...",
+        0,
+      );
 
       const submissionData = {
         driverId: values.driverId,
@@ -178,7 +206,7 @@ export default function QRManagementPage() {
     } catch (err) {
       message.error("Error connecting to server");
     } finally {
-      hideLoading();
+      hideLoading?.();
       setIsGenerating(false);
     }
   };
@@ -372,11 +400,23 @@ export default function QRManagementPage() {
             rules={[{ required: true }]}
           >
             <Select placeholder="Select Driver">
-              {drivers.map((d) => (
+              {drivers.map((d) => {
+                const isExpired =
+                  d.licenseExpiry && new Date(d.licenseExpiry) < new Date();
+                return (
+                  <Option key={d._id} value={d._id} disabled={isExpired}>
+                    <Space>
+                      {d.name}
+                      {isExpired && <Tag color="error">Expired License</Tag>}
+                    </Space>
+                  </Option>
+                );
+              })}
+              {/* {drivers.map((d) => (
                 <Option key={d._id} value={d._id}>
                   {d.name}
                 </Option>
-              ))}
+              ))} */}
             </Select>
           </Form.Item>
           <Form.Item

@@ -3,6 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import QRRequest from "@/models/QRRequest";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
+import Driver from "@/models/Driver";
 
 // GET: Fetch user-specific QR requests
 export async function GET() {
@@ -35,6 +36,37 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
+    const { driverId } = body;
+
+    // 1. VALIDATION: Check if driver exists and has a valid license
+    const driver = await Driver.findById(driverId);
+
+    if (!driver) {
+      return NextResponse.json(
+        { message: "Driver not found" },
+        { status: 404 },
+      );
+    }
+
+    const today = new Date();
+    const expiryDate = driver.licenseExpiry
+      ? new Date(driver.licenseExpiry)
+      : null;
+
+    // Check for expiration or an "Invalid/Suspended" status string
+    const isExpired = expiryDate && expiryDate < today;
+    const isStatusInvalid = ["Expired", "Suspended", "Inactive"].includes(
+      driver.licenseStatus,
+    );
+
+    if (isExpired || isStatusInvalid) {
+      return NextResponse.json(
+        {
+          message: "Cannot generate QR: Driver license is expired or invalid.",
+        },
+        { status: 400 },
+      );
+    }
 
     // Create record with hidden userId from session
     const newQrRequest = await QRRequest.create({
