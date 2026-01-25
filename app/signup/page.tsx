@@ -35,13 +35,23 @@ export default function SignupPage() {
 
   return (
     <AntdRegistry>
-      <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4">
-        <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600">
+      <div className="relative min-h-screen flex items-center justify-center bg-[#fff] p-4">
+        {/* 1. TOP LEFT LOGO */}
+        <div className="absolute top-6 right-6">
+          <Image
+            src="./biometrik-logo.jpeg"
+            alt="biometrik-logo-top"
+            width={120}
+            preview={false}
+          />
+        </div>
+        <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600 mt-12 mb-8">
           <div className="mb-6 text-center">
             <Image
-              src="./biometrik-logo.jpeg"
-              alt="biometrik-logo"
+              src="./jiobp.png"
+              alt="jiobp-logo"
               width={140}
+              preview={false}
             />
           </div>
 

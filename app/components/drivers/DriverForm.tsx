@@ -93,7 +93,9 @@ export default function DriverForm({
     if (imageUrl.includes(",")) {
       finalBase64 = imageUrl.split(",")[1];
     }
-    onSubmit({ ...values, image: finalBase64 });
+
+    const finalStatus = isEditing ? initialValues?.isActive : true;
+    onSubmit({ ...values, image: finalBase64, isActive: finalStatus });
   };
 
   const preparedValues = initialValues
@@ -103,7 +105,7 @@ export default function DriverForm({
           ? dayjs(initialValues.licenseValidity)
           : null,
       }
-    : { isActive: true };
+    : {};
 
   return (
     <Row
@@ -232,19 +234,19 @@ export default function DriverForm({
               </Form.Item>
 
               {/* 2. CONDITIONAL RENDERING: Hide Status section if isEditing is true */}
-              {!isEditing && (
+              {/* {!isEditing && (
                 <Row align="middle" style={{ marginTop: "16px" }}>
                   <Col span={24}>
                     <Text style={{ display: "block", marginBottom: "8px" }}>Status</Text>
                     <Form.Item name="isActive" valuePropName="checked" noStyle>
                       <Space>
-                        <Switch defaultChecked />
+                        <Switch defaultChecked /> */}
                         {/* <Text type="secondary">Authorized to log in immediately?</Text> */}
-                      </Space>
+                      {/* </Space>
                     </Form.Item>
                   </Col>
                 </Row>
-              )}
+              )} */}
 
               <Divider style={{ margin: "24px 0" }} />
 

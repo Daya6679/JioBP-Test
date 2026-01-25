@@ -158,10 +158,7 @@ export default function QRManagementPage() {
 
       // 3. PROCEED IF VALID
       setIsGenerating(true);
-      hideLoading = message.loading(
-        "Validating & Generating QR Code...",
-        0,
-      );
+      hideLoading = message.loading("Validating & Generating QR Code...", 0);
 
       const submissionData = {
         driverId: values.driverId,
@@ -447,10 +444,15 @@ export default function QRManagementPage() {
                 label="Fuel Grade"
                 rules={[{ required: true }]}
               >
-                <Select placeholder="Select">
+                <Input
+                  readOnly
+                  placeholder="Auto-filled from vehicle"
+                  className="bg-gray-50 cursor-not-allowed"
+                />
+                {/* <Select placeholder="Select">
                   <Option value="Petrol">Petrol</Option>
                   <Option value="Diesel">Diesel</Option>
-                </Select>
+                </Select> */}
               </Form.Item>
             </Col>
             <Col span={12}>

@@ -85,21 +85,63 @@ function LoginForm() {
 export default function LoginPage() {
   return (
     <AntdRegistry>
-      <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4">
+      {/* 1. Main Background Container */}
+      <div className="relative min-h-screen flex flex-col items-center justify-center bg-[#fff] p-4">
+        {/* 2. TOP LEFT LOGO (Positioned absolutely) */}
+        <div className="absolute top-6 right-6">
+          <Image
+            src="./biometrik-logo.jpeg"
+            alt="biometrik-logo-top-left"
+            width={120}
+            preview={false}
+          />
+        </div>
+
+        {/* 3. CENTER LOGIN CARD */}
         <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600">
+          {/* CENTER LOGO (Inside the card) */}
           <div className="mb-6 text-center">
             <Image
-              src="./biometrik-logo.jpeg"
-              alt="biometrik-logo"
+              src="./jiobp.png"
+              alt="jiobp-logo"
               width={140}
+              preview={false}
             />
+            {/* <div className="mt-2">
+              <Title level={4}>Login to Your Account</Title>
+            </div> */}
           </div>
 
           <Suspense fallback={<div>Loading...</div>}>
             <LoginForm />
           </Suspense>
         </Card>
+
+        {/* Optional: Footer credit */}
+        <div className="mt-6">
+          <Text type="secondary" className="text-xs">
+            © 2026 Biometrik. All rights reserved.
+          </Text>
+        </div>
       </div>
     </AntdRegistry>
+
+    // <AntdRegistry>
+    //   <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4">
+    //     <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600">
+    //       <div className="mb-6 text-center">
+    //         <Image
+    //           src="./biometrik-logo.jpeg"
+    //           alt="biometrik-logo"
+    //           width={140}
+    //         />
+    //       </div>
+
+    //       <Suspense fallback={<div>Loading...</div>}>
+    //         <LoginForm />
+    //       </Suspense>
+    //     </Card>
+    //   </div>
+    // </AntdRegistry>
   );
 }
