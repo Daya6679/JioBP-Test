@@ -1,17 +1,19 @@
 "use client";
 
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import DriverForm from "@/app/components/drivers/DriverForm";
 import { message, Spin } from "antd";
 
-export default function AddDriverPage() {
+function AddDriverContent() {
   const params = useSearchParams();
   const id = params.get("id");
   const router = useRouter();
   const [data, setData] = useState<any>(null);
   const [isFetching, setIsFetching] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  const [messageApi, contextHolder] = message.useMessage();
 
   useEffect(() => {
     if (id) {
@@ -45,15 +47,19 @@ export default function AddDriverPage() {
       });
 
       if (res.ok) {
-        message.success(id ? "Driver updated!" : "Driver registered successfully!");
-        router.push("/dashboard/drivers");
-        router.refresh();
+        messageApi.success(
+          id ? "Driver updated!" : "Driver registered successfully!",
+        );
+        setTimeout(() => {
+          router.push("/dashboard/drivers");
+          router.refresh();
+        }, 800);
       } else {
         const errData = await res.json();
-        message.error(errData.message || "Failed to save");
+        messageApi.error(errData.message || "Failed to save");
       }
     } catch (err) {
-      message.error("Network error. Please try again.");
+      messageApi.error("Network error. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -67,5 +73,30 @@ export default function AddDriverPage() {
     );
   }
 
-  return <DriverForm initialValues={data} onSubmit={onSubmit} isLoading={isSaving} isEditing={!!id} />;
+  return (
+    <>
+      {contextHolder}
+      <DriverForm
+        initialValues={data}
+        onSubmit={onSubmit}
+        isLoading={isSaving}
+        isEditing={!!id}
+      />
+      ;
+    </>
+  );
+}
+
+export default function AddDriverPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex justify-center items-center h-screen">
+          <Spin size="large" />
+        </div>
+      }
+    >
+      <AddDriverContent />
+    </Suspense>
+  );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Form,
   Select,
@@ -38,9 +38,13 @@ const { Title, Text: AntText } = Typography;
 const { Option } = Select;
 const { Search } = Input;
 
-export default function QRManagementPage() {
+function QRManagementContent() {
   const [form] = Form.useForm();
   const requestType = Form.useWatch("requestType", form);
+
+  const [messageApi, messageContextHolder] = message.useMessage();
+  const [notificationApi, notificationContextHolder] =
+    notification.useNotification();
 
   const [drivers, setDrivers] = useState<any[]>([]);
   const [vehicles, setVehicles] = useState<any[]>([]);
@@ -131,8 +135,6 @@ export default function QRManagementPage() {
 
   const createQrRequest = async (values: any) => {
     let hideLoading: (() => void) | null = null;
-    // setIsGenerating(true);
-    // const hideLoading = message.loading("Generating QR Code...", 0);
     try {
       const driverObj = drivers.find((d) => d._id === values.driverId);
       const vehicleObj = vehicles.find((v) => v._id === values.vehicleId);
@@ -158,7 +160,7 @@ export default function QRManagementPage() {
 
       // 3. PROCEED IF VALID
       setIsGenerating(true);
-      hideLoading = message.loading("Validating & Generating QR Code...", 0);
+      hideLoading = messageApi.loading("Validating & Generating QR Code...", 0);
 
       const submissionData = {
         driverId: values.driverId,
@@ -184,7 +186,7 @@ export default function QRManagementPage() {
       const genData = await genRes.json();
 
       if (genRes.ok) {
-        message.success("QR Generated Successfully");
+        messageApi.success("QR Generated Successfully");
         form.resetFields();
         setIsRequestModalOpen(false);
         setQrModal({
@@ -201,7 +203,7 @@ export default function QRManagementPage() {
         fetchQrs();
       }
     } catch (err) {
-      message.error("Error connecting to server");
+      messageApi.error("Error connecting to server");
     } finally {
       hideLoading?.();
       setIsGenerating(false);
@@ -300,6 +302,8 @@ export default function QRManagementPage() {
 
   return (
     <div style={{ padding: "24px" }}>
+      {messageContextHolder}
+      {notificationContextHolder}
       <div
         style={{
           display: "flex",
@@ -577,5 +581,13 @@ export default function QRManagementPage() {
         </Row>
       </Modal>
     </div>
+  );
+}
+
+export default function QRManagementPage() {
+  return (
+    <Suspense fallback={<Card loading={true} />}>
+      <QRManagementContent />
+    </Suspense>
   );
 }

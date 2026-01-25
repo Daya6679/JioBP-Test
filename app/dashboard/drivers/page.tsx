@@ -38,6 +38,7 @@ export default function DriversPage() {
   const [selectedDriver, setSelectedDriver] = useState<any>(null);
 
   const router = useRouter();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const fetchDrivers = async () => {
     setLoading(true);
@@ -50,7 +51,7 @@ export default function DriversPage() {
       setFilteredDrivers(list);
     } catch (err) {
       console.error("Fetch error:", err);
-      message.error("Could not load drivers list");
+      messageApi.error("Could not load drivers list");
     } finally {
       setLoading(false);
     }
@@ -92,11 +93,11 @@ export default function DriversPage() {
             body: JSON.stringify({ isActive: false }),
           });
           if (res.ok) {
-            message.success(`${record.name} deleted successfully`);
+           messageApi.success(`${record.name} deleted successfully`);
             fetchDrivers();
           }
         } catch (err) {
-          message.error("Failed to update status");
+          messageApi.error("Failed to update status");
         }
       },
     });
@@ -186,6 +187,7 @@ export default function DriversPage() {
 
   return (
     <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
+      {contextHolder}
       {/* Responsive Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>

@@ -7,9 +7,16 @@ const { Title, Text } = Typography;
 
 export default function SignupPage() {
   const router = useRouter();
+  const [messageApi, contextHolder] = message.useMessage();
 
   const onFinish = async (values: any) => {
-    const hide = message.loading("Creating account...", 0);
+    const msgKey = "signup-loading";
+   messageApi.open({
+      key: msgKey,
+      type: "loading",
+      content: "Creating account...",
+      duration: 0,
+    });
     try {
       const res = await fetch("/api/auth/signup", {
         method: "POST",
@@ -18,23 +25,40 @@ export default function SignupPage() {
       });
 
       const data = await res.json();
-      hide();
+      // hide();
 
       if (res.ok) {
-        message.success("Account created! Please login.");
+        messageApi.open({
+          key: msgKey,
+          type: "success",
+          content: "Account created! Please login.",
+          duration: 2,
+        });
         router.push("/login");
       } else {
-        message.error(data.message || "Signup failed");
+       messageApi.open({
+          key: msgKey,
+          type: "error",
+          content: data.message || "Signup failed",
+          duration: 3,
+        });
       }
     } catch (err) {
-      hide();
+      // hide();
       console.error("DETAILED_FETCH_ERROR:", err);
-      message.error("Network error. Please try again.");
+      messageApi.open({
+        key: msgKey,
+        type: "error",
+        content: "Network error. Please try again.",
+        duration: 3,
+      });
     }
   };
 
   return (
     <AntdRegistry>
+      {contextHolder}
+      
       <div className="relative min-h-screen flex items-center justify-center bg-[#fff] p-4">
         {/* 1. TOP LEFT LOGO */}
         <div className="absolute top-6 right-6">

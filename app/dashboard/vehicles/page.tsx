@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Button,
   Table,
@@ -30,7 +30,7 @@ const { Title, Text } = Typography;
 const { confirm } = Modal;
 const { Search } = Input;
 
-export default function VehiclesPage() {
+   function VehicleListContent() {
   const [vehicles, setVehicles] = useState([]);
   const [filteredVehicles, setFilteredVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -40,6 +40,7 @@ export default function VehiclesPage() {
   const router = useRouter();
   // 2. Initialize searchParams to check for ?id=
   const searchParams = useSearchParams();
+  const [messageApi, contextHolder] = message.useMessage();
   const isEditing = searchParams.has("id");
 
   const fetchVehicles = async () => {
@@ -53,7 +54,7 @@ export default function VehiclesPage() {
       setFilteredVehicles(list);
     } catch (err) {
       console.error("Fetch error:", err);
-      message.error("Could not load vehicles list");
+      messageApi.error("Could not load vehicles list");
     } finally {
       setLoading(false);
     }
@@ -97,11 +98,11 @@ export default function VehiclesPage() {
             body: JSON.stringify({ isActive: false }),
           });
           if (res.ok) {
-            message.success(`Vehicle deleted successfully`);
+            messageApi.success(`Vehicle deleted successfully`);
             fetchVehicles();
           }
         } catch (err) {
-          message.error("Error connecting to server");
+          messageApi.error("Error connecting to server");
         }
       },
     });
@@ -137,16 +138,6 @@ export default function VehiclesPage() {
         <span className="capitalize">{type || "N/A"}</span>
       ),
     },
-
-    // 3. Conditional Status Column for Desktop
-    // ...(!isEditing ? [{
-    //   title: "Status",
-    //   dataIndex: "isActive",
-    //   key: "isActive",
-    //   render: (active: boolean) => (
-    //     <Tag color={active ? "green" : "red"}>{active ? "ACTIVE" : "INACTIVE"}</Tag>
-    //   ),
-    // }] : []),
     {
       title: "Created On",
       dataIndex: "createdAt",
@@ -220,6 +211,7 @@ export default function VehiclesPage() {
 
   return (
     <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
+      {contextHolder}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
           <Title level={4} style={{ margin: 0 }}>
@@ -266,12 +258,6 @@ export default function VehiclesPage() {
                   </div>
                 </div>
               </div>
-              {/* 4. Conditional Status Tag for Mobile */}
-              {/* {!isEditing && (
-                <Tag color={vehicle.isActive ? "green" : "red"} className="m-0">
-                  {vehicle.isActive ? "ACTIVE" : "INACTIVE"}
-                </Tag>
-              )} */}
             </div>
 
             <div className="grid grid-cols-2 gap-y-3 mb-4 text-sm bg-gray-50 p-3 rounded-md">
@@ -417,5 +403,13 @@ export default function VehiclesPage() {
         )}
       </Modal>
     </Card>
+  );
+}
+
+export default function VehiclesPage() {
+  return (
+    <Suspense fallback={<Card loading />}>
+      <VehicleListContent />
+    </Suspense>
   );
 }

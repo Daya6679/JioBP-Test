@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, Suspense } from "react";
 import { 
   Table, 
   Tag, 
@@ -29,7 +29,7 @@ import dayjs from "dayjs";
 const { Title, Text } = Typography;
 const { Option } = Select;
 
-export default function TransactionDashboard() {
+ function TransactionListContent() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [drivers, setDrivers] = useState([]);
@@ -40,6 +40,8 @@ export default function TransactionDashboard() {
   // Filters state
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
+
+  const [messageApi, contextHolder] = message.useMessage();
 
   const fetchMetadata = async () => {
     try {
@@ -73,12 +75,12 @@ export default function TransactionDashboard() {
         setTransactions([]);
       }
     } catch (error) {
-      message.error("Failed to load transactions");
+      messageApi.error("Failed to load transactions");
       setTransactions([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedDriver, selectedVehicle]);
+  }, [selectedDriver, selectedVehicle, messageApi]);
 
   useEffect(() => {
     fetchMetadata();
@@ -141,24 +143,11 @@ export default function TransactionDashboard() {
         amt > 0 ? <Text strong className="text-green-600">₹{amt.toLocaleString()}</Text> : <Text type="secondary">-</Text>
       ),
     },
-    // {
-    //   title: "Action",
-    //   key: "action",
-    //   width: 80,
-    //   render: (_, record) => (
-    //     <Tooltip title="View Details">
-    //       <Button 
-    //         type="text" 
-    //         icon={<InfoCircleOutlined />} 
-    //         onClick={() => openTxModal(record)} 
-    //       />
-    //     </Tooltip>
-    //   ),
-    // },
   ];
 
   return (
     <div style={{ padding: "24px" }}>
+      {contextHolder}
       <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
           <div>
@@ -172,7 +161,6 @@ export default function TransactionDashboard() {
               placeholder="Filter by Driver"
               style={{ width: "100%", minWidth: 200 }}
               allowClear
-              optionFilterProp="children"
               onChange={(value) => setSelectedDriver(value)}
               suffixIcon={<SearchOutlined />}
             >
@@ -186,7 +174,6 @@ export default function TransactionDashboard() {
               placeholder="Filter by Vehicle"
               style={{ width: "100%", minWidth: 200 }}
               allowClear
-              optionFilterProp="children"
               onChange={(value) => setSelectedVehicle(value)}
               suffixIcon={<SearchOutlined />}
             >
@@ -300,5 +287,13 @@ export default function TransactionDashboard() {
         </Modal>
       </Card>
     </div>
+  );
+}
+
+export default function TransactionDashboard() {
+  return (
+    <Suspense fallback={<Card loading={true} />}>
+      <TransactionListContent />
+    </Suspense>
   );
 }

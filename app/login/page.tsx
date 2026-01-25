@@ -11,17 +11,26 @@ const { Title, Text } = Typography;
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [messageApi, contextHolder] = message.useMessage();
   const callbackUrl = searchParams.get("callbackUrl");
 
   // Trigger toast if user was redirected here by middleware
   useEffect(() => {
     if (callbackUrl) {
-      message.warning("Please login or signup first to access the dashboard.");
+      messageApi.warning(
+        "Please login or signup first to access the dashboard.",
+      );
     }
   }, [callbackUrl]);
 
   const onFinish = async (values: any) => {
-    const hide = message.loading("Logging In...", 0); // Changed to 0 so it stays until manual hide
+    const key = "loginLoading";
+    messageApi.open({
+      key,
+      type: "loading",
+      content: "Logging In...",
+      duration: 0,
+    });
     try {
       const res = await signIn("credentials", {
         email: values.email,
@@ -29,56 +38,74 @@ function LoginForm() {
         redirect: false,
       });
 
-      hide();
+      // hide();
 
       if (res?.ok) {
-        message.success("Login successful.");
+        messageApi.open({
+          key,
+          type: "success",
+          content: "Login successful.",
+          duration: 2,
+        });
         router.push("/dashboard");
       } else {
-        message.error(res?.error || "Login failed");
+        messageApi.open({
+          key,
+          type: "error",
+          content: res?.error || "Login failed",
+          duration: 3,
+        });
       }
     } catch (err) {
-      hide();
+      // hide();
+      messageApi.open({
+        key,
+        type: "error",
+        content: "Network error. Please try again.",
+        duration: 3,
+      });
       console.error("DETAILED_FETCH_ERROR:", err);
-      message.error("Network error. Please try again.");
     }
   };
 
   return (
-    <Form layout="vertical" onFinish={onFinish} size="middle">
-      <Form.Item
-        name="email"
-        label="Email"
-        rules={[{ required: true, type: "email" }]}
-      >
-        <Input placeholder="example@jiobp.com" />
-      </Form.Item>
+    <>
+      {contextHolder}
+      <Form layout="vertical" onFinish={onFinish} size="middle">
+        <Form.Item
+          name="email"
+          label="Email"
+          rules={[{ required: true, type: "email" }]}
+        >
+          <Input placeholder="example@jiobp.com" />
+        </Form.Item>
 
-      <Form.Item
-        name="password"
-        label="Password"
-        rules={[{ required: true, min: 6 }]}
-      >
-        <Input.Password placeholder="Enter your password" />
-      </Form.Item>
+        <Form.Item
+          name="password"
+          label="Password"
+          rules={[{ required: true, min: 6 }]}
+        >
+          <Input.Password placeholder="Enter your password" />
+        </Form.Item>
 
-      <Button
-        type="primary"
-        htmlType="submit"
-        block
-        className="bg-blue-600 mt-2"
-      >
-        Login
-      </Button>
-      <div className="mt-4 text-center">
-        <Text type="secondary">
-          Don&apos;t have an account?{" "}
-          <Typography.Link onClick={() => router.push("/signup")}>
-            Sign Up
-          </Typography.Link>
-        </Text>
-      </div>
-    </Form>
+        <Button
+          type="primary"
+          htmlType="submit"
+          block
+          className="bg-blue-600 mt-2"
+        >
+          Login
+        </Button>
+        <div className="mt-4 text-center">
+          <Text type="secondary">
+            Don&apos;t have an account?{" "}
+            <Typography.Link onClick={() => router.push("/signup")}>
+              Sign Up
+            </Typography.Link>
+          </Text>
+        </div>
+      </Form>
+    </>
   );
 }
 
@@ -107,41 +134,13 @@ export default function LoginPage() {
               width={140}
               preview={false}
             />
-            {/* <div className="mt-2">
-              <Title level={4}>Login to Your Account</Title>
-            </div> */}
           </div>
 
           <Suspense fallback={<div>Loading...</div>}>
             <LoginForm />
           </Suspense>
         </Card>
-
-        {/* Optional: Footer credit */}
-        <div className="mt-6">
-          <Text type="secondary" className="text-xs">
-            © 2026 Biometrik. All rights reserved.
-          </Text>
-        </div>
       </div>
     </AntdRegistry>
-
-    // <AntdRegistry>
-    //   <div className="min-h-screen flex items-center justify-center bg-[#f0f2f5] p-4">
-    //     <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600">
-    //       <div className="mb-6 text-center">
-    //         <Image
-    //           src="./biometrik-logo.jpeg"
-    //           alt="biometrik-logo"
-    //           width={140}
-    //         />
-    //       </div>
-
-    //       <Suspense fallback={<div>Loading...</div>}>
-    //         <LoginForm />
-    //       </Suspense>
-    //     </Card>
-    //   </div>
-    // </AntdRegistry>
   );
 }
