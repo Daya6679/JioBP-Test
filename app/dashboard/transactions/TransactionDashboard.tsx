@@ -30,10 +30,10 @@ const { Title, Text } = Typography;
 const { Option } = Select;
 
  function TransactionListContent() {
-  const [transactions, setTransactions] = useState([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [drivers, setDrivers] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
   

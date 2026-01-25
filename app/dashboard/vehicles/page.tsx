@@ -31,8 +31,8 @@ const { confirm } = Modal;
 const { Search } = Input;
 
    function VehicleListContent() {
-  const [vehicles, setVehicles] = useState([]);
-  const [filteredVehicles, setFilteredVehicles] = useState([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
+  const [filteredVehicles, setFilteredVehicles] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState<any>(null);

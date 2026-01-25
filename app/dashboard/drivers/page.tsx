@@ -31,8 +31,8 @@ const { confirm } = Modal;
 const { Search } = Input;
 
 export default function DriversPage() {
-  const [drivers, setDrivers] = useState([]);
-  const [filteredDrivers, setFilteredDrivers] = useState([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState<any>(null);
