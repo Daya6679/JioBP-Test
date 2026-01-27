@@ -11,11 +11,11 @@ export async function GET() {
     await connectDB();
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user?.id) {
+    if (!session || !(session.user as any)?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const qrs = await QRRequest.find({ userId: session.user.id })
+    const qrs = await QRRequest.find({ userId: (session.user as any).id })
       .populate("driverId", "name") // Fetch only the name field from Driver
       .populate("vehicleId", "vehicleNumber") // Fetch only vehicleNumber from Vehicle
       .sort({ createdAt: -1 });
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     await connectDB();
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user?.id) {
+    if (!session || !(session.user as any)?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     // Create record with hidden userId from session
     const newQrRequest = await QRRequest.create({
       ...body,
-      userId: session.user.id,
+      userId: (session.user as any).id,
     });
 
     return NextResponse.json(newQrRequest, { status: 201 });

@@ -1,42 +1,44 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, Suspense } from "react";
-import { 
-  Table, 
-  Tag, 
-  Space, 
-  Select, 
-  Card, 
-  Typography, 
-  message, 
-  Button, 
+import {
+  Table,
+  Tag,
+  Space,
+  Select,
+  Card,
+  Typography,
+  message,
+  Button,
   Tooltip,
   Modal,
-  Divider
+  Divider,
 } from "antd";
 import type { ColumnsType } from "antd/es/table";
-import { 
-  SearchOutlined, 
-  HistoryOutlined, 
+import {
+  SearchOutlined,
+  HistoryOutlined,
   InfoCircleOutlined,
   CalendarOutlined,
   UserOutlined,
   CarOutlined,
-  DashboardOutlined
+  DashboardOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
+import { useSession } from "next-auth/react";
 
 const { Title, Text } = Typography;
 const { Option } = Select;
 
- function TransactionListContent() {
-  const [transactions, setTransactions] = useState([]);
+function TransactionListContent() {
+  const { data: session, status } = useSession();
+  const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [drivers, setDrivers] = useState([]);
-  const [vehicles, setVehicles] = useState([]);
+  const [drivers, setDrivers] = useState<any[]>([]);
+  const [vehicles, setVehicles] = useState<any[]>([]);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [selectedTx, setSelectedTx] = useState<any>(null);
-  
+
   // Filters state
   const [selectedDriver, setSelectedDriver] = useState<string | null>(null);
   const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null);
@@ -51,7 +53,7 @@ const { Option } = Select;
       ]);
       const drData = await drRes.json();
       const vehData = await vehRes.json();
-      
+
       if (Array.isArray(drData)) setDrivers(drData);
       if (Array.isArray(vehData)) setVehicles(vehData);
     } catch (error) {
@@ -60,13 +62,25 @@ const { Option } = Select;
   };
 
   const fetchTransactions = useCallback(async () => {
+    if (status !== "authenticated") return;
+    // 3. Get the ID from the session object
+    const currentUserId = (session?.user as any)?.id;
+
+    if (!currentUserId) {
+      // Don't show an error immediately, as the session might still be loading
+      return;
+    }
+
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      params.append("userId", currentUserId);
+
       if (selectedDriver) params.append("driverId", selectedDriver);
       if (selectedVehicle) params.append("vehicleId", selectedVehicle);
 
-      const response = await fetch(`/api/dashboard/transactions?${params.toString()}`);
+      // Note: Ensure your API path matches (it was /api/transactions in your code)
+      const response = await fetch(`/api/transactions?${params.toString()}`);
       const data = await response.json();
 
       if (response.ok && Array.isArray(data)) {
@@ -76,11 +90,10 @@ const { Option } = Select;
       }
     } catch (error) {
       messageApi.error("Failed to load transactions");
-      setTransactions([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedDriver, selectedVehicle, messageApi]);
+  }, [selectedDriver, selectedVehicle, messageApi, session, status]);
 
   useEffect(() => {
     fetchMetadata();
@@ -100,12 +113,15 @@ const { Option } = Select;
       title: "Date & Time",
       dataIndex: "createdAt",
       key: "createdAt",
-      sorter: (a: any, b: any) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
-      defaultSortOrder: 'descend' as const,
+      sorter: (a: any, b: any) =>
+        dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+      defaultSortOrder: "descend" as const,
       render: (date) => (
         <div className="flex flex-col">
           <Text strong>{dayjs(date).format("YYYY-MM-DD")}</Text>
-          <Text type="secondary" className="text-xs">{dayjs(date).format("hh:mm A")}</Text>
+          <Text type="secondary" className="text-xs">
+            {dayjs(date).format("hh:mm A")}
+          </Text>
         </div>
       ),
       width: 150,
@@ -125,23 +141,37 @@ const { Option } = Select;
       title: "Vehicle No.",
       dataIndex: ["vehicleId", "vehicleNumber"],
       key: "vehicleNumber",
-      render: (plate) => <Tag color="volcano" className="font-mono">{plate || "N/A"}</Tag>,
+      render: (plate) => (
+        <Tag color="volcano" className="font-mono">
+          {plate || "N/A"}
+        </Tag>
+      ),
     },
     {
       title: "Qty (L)",
       dataIndex: "qty",
       key: "qty",
-      render: (qty) => (
-        qty > 0 ? <Text strong className="text-blue-600">{qty} L</Text> : <Text type="secondary">-</Text>
-      ),
+      render: (qty) =>
+        qty > 0 ? (
+          <Text strong className="text-blue-600">
+            {qty} L
+          </Text>
+        ) : (
+          <Text type="secondary">-</Text>
+        ),
     },
     {
       title: "Amount",
       dataIndex: "amount",
       key: "amount",
-      render: (amt) => (
-        amt > 0 ? <Text strong className="text-green-600">₹{amt.toLocaleString()}</Text> : <Text type="secondary">-</Text>
-      ),
+      render: (amt) =>
+        amt > 0 ? (
+          <Text strong className="text-green-600">
+            ₹{amt.toLocaleString()}
+          </Text>
+        ) : (
+          <Text type="secondary">-</Text>
+        ),
     },
   ];
 
@@ -151,10 +181,14 @@ const { Option } = Select;
       <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
         <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-6">
           <div>
-            <Title level={4} style={{ margin: 0 }}>Fuel Transactions Log</Title>
-            <Text type="secondary">Review all fueling activities and histories</Text>
+            <Title level={4} style={{ margin: 0 }}>
+              Fuel Transactions Log
+            </Title>
+            <Text type="secondary">
+              Review all fueling activities and histories
+            </Text>
           </div>
-          
+
           <div className="flex flex-col sm:flex-row gap-3">
             <Select
               showSearch
@@ -164,8 +198,10 @@ const { Option } = Select;
               onChange={(value) => setSelectedDriver(value)}
               suffixIcon={<SearchOutlined />}
             >
-              {drivers.map(d => (
-                <Option key={d._id} value={d._id}>{d.name}</Option>
+              {drivers.map((d) => (
+                <Option key={d._id} value={d._id}>
+                  {d.name}
+                </Option>
               ))}
             </Select>
 
@@ -177,8 +213,10 @@ const { Option } = Select;
               onChange={(value) => setSelectedVehicle(value)}
               suffixIcon={<SearchOutlined />}
             >
-              {vehicles.map(v => (
-                <Option key={v._id} value={v._id}>{v.vehicleNumber}</Option>
+              {vehicles.map((v) => (
+                <Option key={v._id} value={v._id}>
+                  {v.vehicleNumber}
+                </Option>
               ))}
             </Select>
           </div>
@@ -187,50 +225,76 @@ const { Option } = Select;
         {/* MOBILE VIEW */}
         <div className="block md:hidden space-y-4">
           {transactions.map((tx: any) => (
-            <div 
-              key={tx._id} 
+            <div
+              key={tx._id}
               className="p-4 border border-gray-100 rounded-lg bg-white shadow-sm"
               onClick={() => openTxModal(tx)}
             >
               <div className="flex justify-between items-start mb-3">
                 <div className="flex gap-3">
                   <div className="p-2 bg-blue-50 rounded-lg">
-                    <HistoryOutlined style={{ color: "#1890ff", fontSize: 18 }} />
+                    <HistoryOutlined
+                      style={{ color: "#1890ff", fontSize: 18 }}
+                    />
                   </div>
                   <div>
-                    <div className="font-bold text-gray-800">{tx.driverId?.name || "Unknown Driver"}</div>
-                    <div className="text-xs text-gray-400 font-mono">{tx.vehicleId?.vehicleNumber || "N/A"}</div>
+                    <div className="font-bold text-gray-800">
+                      {tx.driverId?.name || "Unknown Driver"}
+                    </div>
+                    <div className="text-xs text-gray-400 font-mono">
+                      {tx.vehicleId?.vehicleNumber || "N/A"}
+                    </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-xs text-gray-400">{dayjs(tx.createdAt).format("MMM DD, YYYY")}</div>
-                  <div className="text-[10px] text-gray-400 uppercase">{dayjs(tx.createdAt).format("hh:mm A")}</div>
+                  <div className="text-xs text-gray-400">
+                    {dayjs(tx.createdAt).format("MMM DD, YYYY")}
+                  </div>
+                  <div className="text-[10px] text-gray-400 uppercase">
+                    {dayjs(tx.createdAt).format("hh:mm A")}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-2 bg-gray-50 p-3 rounded-md mb-2">
                 <div>
-                  <Text type="secondary" className="text-[10px] block uppercase">Quantity</Text>
-                  <Text strong className="text-blue-600">{tx.qty > 0 ? `${tx.qty} L` : "-"}</Text>
+                  <Text
+                    type="secondary"
+                    className="text-[10px] block uppercase"
+                  >
+                    Quantity
+                  </Text>
+                  <Text strong className="text-blue-600">
+                    {tx.qty > 0 ? `${tx.qty} L` : "-"}
+                  </Text>
                 </div>
                 <div className="text-right">
-                  <Text type="secondary" className="text-[10px] block uppercase">Amount</Text>
-                  <Text strong className="text-green-600">{tx.amount > 0 ? `₹${tx.amount}` : "-"}</Text>
+                  <Text
+                    type="secondary"
+                    className="text-[10px] block uppercase"
+                  >
+                    Amount
+                  </Text>
+                  <Text strong className="text-green-600">
+                    {tx.amount > 0 ? `₹${tx.amount}` : "-"}
+                  </Text>
                 </div>
               </div>
             </div>
           ))}
           {transactions.length === 0 && !loading && (
-            <div className="text-center py-10 text-gray-400">No transactions found</div>
+            <div className="text-center py-10 text-gray-400">
+              No transactions found
+            </div>
           )}
         </div>
 
         {/* DESKTOP VIEW */}
         <div className="hidden md:block">
-          <Table 
-            columns={columns} 
-            dataSource={transactions} 
-            rowKey="_id" 
+          <Table
+            columns={columns}
+            dataSource={transactions}
+            rowKey="_id"
             loading={loading}
             pagination={{ defaultPageSize: 10, showSizeChanger: true }}
             className="cursor-pointer"
@@ -250,36 +314,60 @@ const { Option } = Select;
             <div className="py-2">
               <div className="flex flex-col items-center mb-6">
                 <div className="p-4 bg-blue-50 rounded-full mb-2">
-                  <DashboardOutlined style={{ fontSize: 32, color: "#1890ff" }} />
+                  <DashboardOutlined
+                    style={{ fontSize: 32, color: "#1890ff" }}
+                  />
                 </div>
                 <Title level={4} style={{ margin: 0 }}>
-                  {selectedTx.qty > 0 ? `${selectedTx.qty} Liters` : `₹${selectedTx.amount}`}
+                  {selectedTx.qty > 0
+                    ? `${selectedTx.qty} Liters`
+                    : `₹${selectedTx.amount}`}
                 </Title>
                 <Text type="secondary">Fuel Transaction Summary</Text>
               </div>
-              
+
               <Divider style={{ margin: "12px 0" }} />
-              
+
               <div className="space-y-4">
                 <div className="flex justify-between">
-                  <Text type="secondary"><UserOutlined className="mr-2"/>Driver</Text>
+                  <Text type="secondary">
+                    <UserOutlined className="mr-2" />
+                    Driver
+                  </Text>
                   <Text strong>{selectedTx.driverId?.name || "N/A"}</Text>
                 </div>
                 <div className="flex justify-between">
-                  <Text type="secondary"><CarOutlined className="mr-2"/>Vehicle No.</Text>
-                  <Tag color="volcano" className="m-0 font-mono">{selectedTx.vehicleId?.vehicleNumber || "N/A"}</Tag>
+                  <Text type="secondary">
+                    <CarOutlined className="mr-2" />
+                    Vehicle No.
+                  </Text>
+                  <Tag color="volcano" className="m-0 font-mono">
+                    {selectedTx.vehicleId?.vehicleNumber || "N/A"}
+                  </Tag>
                 </div>
                 <div className="flex justify-between">
-                  <Text type="secondary"><CalendarOutlined className="mr-2"/>Date</Text>
-                  <Text>{dayjs(selectedTx.createdAt).format("MMMM DD, YYYY")}</Text>
+                  <Text type="secondary">
+                    <CalendarOutlined className="mr-2" />
+                    Date
+                  </Text>
+                  <Text>
+                    {dayjs(selectedTx.createdAt).format("MMMM DD, YYYY")}
+                  </Text>
                 </div>
                 <div className="flex justify-between">
-                  <Text type="secondary"><HistoryOutlined className="mr-2"/>Time</Text>
-                  <Text>{dayjs(selectedTx.createdAt).format("hh:mm:ss A")}</Text>
+                  <Text type="secondary">
+                    <HistoryOutlined className="mr-2" />
+                    Time
+                  </Text>
+                  <Text>
+                    {dayjs(selectedTx.createdAt).format("hh:mm:ss A")}
+                  </Text>
                 </div>
                 <div className="flex justify-between">
                   <Text type="secondary">Transaction ID</Text>
-                  <Text copyable className="text-xs text-gray-400">{selectedTx._id}</Text>
+                  <Text copyable className="text-xs text-gray-400">
+                    {selectedTx._id}
+                  </Text>
                 </div>
               </div>
             </div>

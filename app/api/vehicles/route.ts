@@ -14,11 +14,11 @@ export async function GET() {
 
     console.log("Current Session:", session);
 
-    if (!session || !session.user?.id) {
+    if (!session || !(session.user as any)?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
     const vehicles = await Vehicle.find({
-      userId: session.user.id,
+      userId: (session.user as any).id,
     }).sort({ createdAt: -1 });
     return NextResponse.json(vehicles, { status: 200 });
   } catch (error: any) {
@@ -33,11 +33,11 @@ export async function POST(req: Request) {
 
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user?.id) {
+    if (!session || !(session.user as any)?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 
-    const userId = session.user.id;
+    const userId = (session.user as any).id;
 
     const body = await req.json();
 

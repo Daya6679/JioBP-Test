@@ -3,16 +3,18 @@ import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import Transaction from "@/models/Transaction";
 import QRRequest from "@/models/QRRequest";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth";
 
 export async function POST(req: Request) {
   try {
     await connectDB();
 
     const body = await req.json();
-    const { driverId, vehicleId, qrId, qty, amount } = body;
+    const { driverId, vehicleId, qrId, qty, amount, userId } = body;
 
     // Validation: QR is no longer required, but driver/vehicle and one value are.
-    if (!driverId || !vehicleId || !qrId || (!qty && !amount)) {
+    if (!userId || !driverId || !vehicleId || !qrId || (!qty && !amount)) {
       return NextResponse.json(
         {
           message:
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
       qrId,
       qty: qty || 0,
       amount: amount || 0,
+      userId,
     });
 
     // 4. MARK THE QR AS USED (Prevent reuse)
@@ -55,6 +58,33 @@ export async function POST(req: Request) {
     );
   } catch (error: any) {
     console.error("Transaction Error:", error.message);
+    return NextResponse.json({ message: error.message }, { status: 500 });
+  }
+}
+
+export async function GET(req: Request) {
+  try {
+    await connectDB();
+
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get("userId");
+
+    // 2. If no userId is provided, return an error (prevents seeing all data)
+    if (!userId) {
+      return NextResponse.json(
+        { message: "User ID is required to view transactions." },
+        { status: 400 },
+      );
+    }
+
+    // 3. Query the database for transactions where userId matches
+    // NOTE: Ensure your Mongoose Model has a 'userId' field
+    const transactions = await Transaction.find({ userId: userId }).sort({
+      createdAt: -1,
+    });
+
+    return NextResponse.json(transactions, { status: 200 });
+  } catch (error: any) {
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }

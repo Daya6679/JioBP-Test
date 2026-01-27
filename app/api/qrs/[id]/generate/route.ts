@@ -12,7 +12,7 @@ export async function POST(
   try {
     await connectDB();
     const session = await getServerSession(authOptions);
-    if (!session || !session.user?.id) {
+    if (!session || !(session.user as any)?.id) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
 

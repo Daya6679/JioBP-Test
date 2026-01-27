@@ -7,7 +7,7 @@ const TransactionSchema = new mongoose.Schema(
     qrId: { type: mongoose.Schema.Types.ObjectId, ref: "QRRequest" },
     qty: { type: Number, required: true },
     amount: { type: Number, required: true },
-    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     transactionDate: { type: Date, default: Date.now },
   },
   { timestamps: true }
