@@ -19,6 +19,20 @@ export async function POST(req: Request) {
     // const userId = session?.user?.id;
     const body = await req.json();
 
+    const existingDriver = await Driver.findOne({ 
+      licenseNumber: body.licenseNumber,
+      // Optional: If multiple users can have the same driver, 
+      // remove the userId check below to make it globally unique.
+      userId: (session.user as any).id 
+    });
+
+    if (existingDriver) {
+      return NextResponse.json(
+        { message: "A driver with this license number already exists in your records." },
+        { status: 400 }
+      );
+    }
+
     // Log the body to your terminal to see if data is reaching the server
     console.log("Incoming Driver Data:", body);
 
@@ -29,6 +43,20 @@ export async function POST(req: Request) {
     return NextResponse.json(driver, { status: 201 });
   } catch (error: any) {
     console.error("DRIVER_SAVE_ERROR:", error.message);
+    if (error.code === 11000) {
+      return NextResponse.json(
+        {
+          message:
+            "A driver with this license number already exists. Please check and try again.",
+        },
+        { status: 400 }, // Bad Request
+      );
+    }
+
+    if (error.name === "ValidationError") {
+      return NextResponse.json({ message: error.message }, { status: 400 });
+    }
+
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -70,8 +70,7 @@ export default function DriversPage() {
     const term = value.toLowerCase();
     const filtered = drivers.filter(
       (driver: any) =>
-        driver.name.toLowerCase().includes(term) ||
-        driver.phone.includes(term)
+        driver.name.toLowerCase().includes(term) || driver.phone.includes(term),
     );
     setFilteredDrivers(filtered);
   };
@@ -93,7 +92,7 @@ export default function DriversPage() {
             body: JSON.stringify({ isActive: false }),
           });
           if (res.ok) {
-           messageApi.success(`${record.name} deleted successfully`);
+            messageApi.success(`${record.name} deleted successfully`);
             fetchDrivers();
           }
         } catch (err) {
@@ -110,7 +109,16 @@ export default function DriversPage() {
       key: "image",
       width: 80,
       render: (image: string) => {
-        const src = image && !image.startsWith('data:') ? `data:image/jpeg;base64,${image}` : image;
+        // const src =
+        //   image && !image.startsWith("data:")
+        //     ? `data:image/jpeg;base64,${image}`
+        //     : image;
+        const src =
+          image && image.trim() !== ""
+            ? image.startsWith("data:")
+              ? image
+              : `data:image/jpeg;base64,${image}`
+            : null;
         return <Avatar src={src} icon={<UserOutlined />} size={50} />;
       },
     },
@@ -120,7 +128,11 @@ export default function DriversPage() {
       key: "name",
       sorter: (a: any, b: any) => a.name.localeCompare(b.name),
       render: (text: string, record: any) => (
-        <Text className={record.isActive ? "font-semibold" : "font-semibold text-gray-400"}>
+        <Text
+          className={
+            record.isActive ? "font-semibold" : "font-semibold text-gray-400"
+          }
+        >
           {text}
         </Text>
       ),
@@ -136,7 +148,12 @@ export default function DriversPage() {
       render: (_: any, record: any) => (
         <div className="text-xs">
           <div className="text-gray-400">No: {record.licenseNumber}</div>
-          <div>Expires: {record.licenseValidity ? dayjs(record.licenseValidity).format("YYYY-MM-DD") : "N/A"}</div>
+          <div>
+            Expires:{" "}
+            {record.licenseValidity
+              ? dayjs(record.licenseValidity).format("YYYY-MM-DD")
+              : "N/A"}
+          </div>
         </div>
       ),
     },
@@ -150,7 +167,8 @@ export default function DriversPage() {
       title: "Created On",
       dataIndex: "createdAt",
       key: "createdAt",
-      sorter: (a: any, b: any) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+      sorter: (a: any, b: any) =>
+        dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
       defautlSortOrder: "descend" as const,
       render: (date: string) => (
         <Space size="small" className="text-xs">
@@ -164,7 +182,9 @@ export default function DriversPage() {
       dataIndex: "isActive",
       key: "isActive",
       render: (active: boolean) => (
-        <Tag color={active ? "green" : "red"}>{active ? "ACTIVE" : "INACTIVE"}</Tag>
+        <Tag color={active ? "green" : "red"}>
+          {active ? "ACTIVE" : "INACTIVE"}
+        </Tag>
       ),
     },
     {
@@ -173,11 +193,26 @@ export default function DriversPage() {
       render: (_: any, record: any) => (
         <Space size="middle">
           <Tooltip title="Edit">
-            <Button type="link" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/drivers/add?id=${record._id}`) }} />
+            <Button
+              type="link"
+              icon={<EditOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                router.push(`/dashboard/drivers/add?id=${record._id}`);
+              }}
+            />
           </Tooltip>
           {record.isActive && (
             <Tooltip title="Delete">
-              <Button type="link" danger icon={<DeleteOutlined />} onClick={(e) => { e.stopPropagation(); showDeactivateConfirm(record) }} />
+              <Button
+                type="link"
+                danger
+                icon={<DeleteOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  showDeactivateConfirm(record);
+                }}
+              />
             </Tooltip>
           )}
         </Space>
@@ -191,7 +226,9 @@ export default function DriversPage() {
       {/* Responsive Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
-          <Title level={4} style={{ margin: 0 }}>Drivers Directory</Title>
+          <Title level={4} style={{ margin: 0 }}>
+            Drivers Directory
+          </Title>
           <Text type="secondary">Manage and monitor vehicle operators</Text>
         </div>
         <div className="flex flex-col sm:flex-row gap-2">
@@ -215,50 +252,94 @@ export default function DriversPage() {
       {/* --- MOBILE VIEW: Card List --- */}
       <div className="block md:hidden space-y-4">
         {filteredDrivers.map((driver: any) => (
-          <div 
-            key={driver._id} 
+          <div
+            key={driver._id}
             className="p-4 border border-gray-100 rounded-lg bg-white shadow-sm"
             onClick={() => openDriverModal(driver)}
           >
             <div className="flex justify-between items-start mb-3">
               <div className="flex gap-3">
-                <Avatar 
-                  size={50} 
-                  src={driver.image && !driver.image.startsWith('data:') ? `data:image/jpeg;base64,${driver.image}` : driver.image} 
-                  icon={<UserOutlined />} 
+                <Avatar
+                  size={50}
+                  // src={driver.image && !driver.image.startsWith('data:') ? `data:image/jpeg;base64,${driver.image}` : driver.image}
+                  src={
+                    driver?.image
+                      ? driver.image.startsWith("data:")
+                        ? driver.image
+                        : `data:image/jpeg;base64,${driver.image}`
+                      : null
+                  }
+                  icon={<UserOutlined />}
                 />
                 <div>
-                  <div className={`font-bold ${driver.isActive ? "" : "text-gray-400"}`}>{driver.name}</div>
-                  <div className="text-xs text-gray-500"><PhoneOutlined /> {driver.phone}</div>
+                  <div
+                    className={`font-bold ${driver.isActive ? "" : "text-gray-400"}`}
+                  >
+                    {driver.name}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    <PhoneOutlined /> {driver.phone}
+                  </div>
                 </div>
               </div>
-              <Tag color={driver.isActive ? "green" : "red"}>{driver.isActive ? "ACTIVE" : "INACTIVE"}</Tag>
+              <Tag color={driver.isActive ? "green" : "red"}>
+                {driver.isActive ? "ACTIVE" : "INACTIVE"}
+              </Tag>
             </div>
 
             <div className="grid grid-cols-2 gap-y-2 mb-3 text-xs bg-gray-50 p-2 rounded">
               <div>
-                <Text type="secondary" className="block text-[10px] uppercase">License No</Text>
+                <Text type="secondary" className="block text-[10px] uppercase">
+                  License No
+                </Text>
                 <Text>{driver.licenseNumber}</Text>
               </div>
               <div>
-                <Text type="secondary" className="block text-[10px] uppercase">Expires</Text>
-                <Text>{driver.licenseValidity ? dayjs(driver.licenseValidity).format("YYYY-MM-DD") : "N/A"}</Text>
+                <Text type="secondary" className="block text-[10px] uppercase">
+                  Expires
+                </Text>
+                <Text>
+                  {driver.licenseValidity
+                    ? dayjs(driver.licenseValidity).format("YYYY-MM-DD")
+                    : "N/A"}
+                </Text>
               </div>
               <div className="col-span-2">
-                <Text type="secondary" className="block text-[10px] uppercase"><EnvironmentOutlined /> Address</Text>
+                <Text type="secondary" className="block text-[10px] uppercase">
+                  <EnvironmentOutlined /> Address
+                </Text>
                 <Text ellipsis>{driver.address || "N/A"}</Text>
               </div>
               <div className="col-span-2">
-                <Text type="secondary" className="block text-[10px] uppercase"><CalendarOutlined /> Created On</Text>
-                <Text>{dayjs(driver.createdAt).format("YYYY-MM-DD HH:mm")}</Text>
+                <Text type="secondary" className="block text-[10px] uppercase">
+                  <CalendarOutlined /> Created On
+                </Text>
+                <Text>
+                  {dayjs(driver.createdAt).format("YYYY-MM-DD HH:mm")}
+                </Text>
               </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-               <Button size="small" icon={<EditOutlined />} onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/drivers/add?id=${driver._id}`); }} />
-               {driver.isActive && (
-                 <Button size="small" danger icon={<DeleteOutlined />} onClick={(e) => { e.stopPropagation(); showDeactivateConfirm(driver); }} />
-               )}
+              <Button
+                size="small"
+                icon={<EditOutlined />}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(`/dashboard/drivers/add?id=${driver._id}`);
+                }}
+              />
+              {driver.isActive && (
+                <Button
+                  size="small"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    showDeactivateConfirm(driver);
+                  }}
+                />
+              )}
             </div>
           </div>
         ))}
@@ -278,36 +359,85 @@ export default function DriversPage() {
       </div>
 
       {/* Details Modal (shared) */}
-      <Modal open={viewModalOpen} title="Driver Details" onCancel={() => setViewModalOpen(false)} footer={null} width={640} centered>
+      <Modal
+        open={viewModalOpen}
+        title="Driver Details"
+        onCancel={() => setViewModalOpen(false)}
+        footer={null}
+        width={640}
+        centered
+      >
         {selectedDriver && (
           <Space orientation="vertical" size={24} style={{ width: "100%" }}>
             <Space align="center" size={20}>
-              <Avatar size={96} icon={<UserOutlined />} src={selectedDriver.image && !selectedDriver.image.startsWith('data:') ? `data:image/jpeg;base64,${selectedDriver.image}` : selectedDriver.image} />
+              <Avatar
+                size={96}
+                icon={<UserOutlined />}
+                src={
+                  selectedDriver.image &&
+                  !selectedDriver.image.startsWith("data:")
+                    ? `data:image/jpeg;base64,${selectedDriver.image}`
+                    : selectedDriver.image
+                }
+              />
               <div>
-                <Title level={4} style={{ margin: 0 }}>{selectedDriver.name}</Title>
-                <Tag color={selectedDriver.isActive ? "green" : "red"} style={{ marginTop: 6 }}>{selectedDriver.isActive ? "ACTIVE" : "INACTIVE"}</Tag>
+                <Title level={4} style={{ margin: 0 }}>
+                  {selectedDriver.name}
+                </Title>
+                <Tag
+                  color={selectedDriver.isActive ? "green" : "red"}
+                  style={{ marginTop: 6 }}
+                >
+                  {selectedDriver.isActive ? "ACTIVE" : "INACTIVE"}
+                </Tag>
               </div>
             </Space>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 16,
+              }}
+            >
               <div className="col-span-1">
-                <Text type="secondary" className="text-xs">Phone</Text>
+                <Text type="secondary" className="text-xs">
+                  Phone
+                </Text>
                 <div className="font-medium">{selectedDriver.phone}</div>
               </div>
               <div className="col-span-1">
-                <Text type="secondary" className="text-xs">License Number</Text>
-                <div className="font-medium">{selectedDriver.licenseNumber || "N/A"}</div>
+                <Text type="secondary" className="text-xs">
+                  License Number
+                </Text>
+                <div className="font-medium">
+                  {selectedDriver.licenseNumber || "N/A"}
+                </div>
               </div>
               <div className="col-span-1">
-                <Text type="secondary" className="text-xs">License Validity</Text>
-                <div className="font-medium">{selectedDriver.licenseValidity ? dayjs(selectedDriver.licenseValidity).format("YYYY-MM-DD") : "N/A"}</div>
+                <Text type="secondary" className="text-xs">
+                  License Validity
+                </Text>
+                <div className="font-medium">
+                  {selectedDriver.licenseValidity
+                    ? dayjs(selectedDriver.licenseValidity).format("YYYY-MM-DD")
+                    : "N/A"}
+                </div>
               </div>
               <div className="col-span-1">
-                <Text type="secondary" className="text-xs">Created On</Text>
-                <div className="font-medium">{dayjs(selectedDriver.createdAt).format("YYYY-MM-DD HH:mm")}</div>
+                <Text type="secondary" className="text-xs">
+                  Created On
+                </Text>
+                <div className="font-medium">
+                  {dayjs(selectedDriver.createdAt).format("YYYY-MM-DD HH:mm")}
+                </div>
               </div>
               <div className="col-span-2">
-                <Text type="secondary" className="text-xs">Address</Text>
-                <div className="font-medium">{selectedDriver.address || "N/A"}</div>
+                <Text type="secondary" className="text-xs">
+                  Address
+                </Text>
+                <div className="font-medium">
+                  {selectedDriver.address || "N/A"}
+                </div>
               </div>
             </div>
           </Space>
@@ -316,13 +446,3 @@ export default function DriversPage() {
     </Card>
   );
 }
-
-
-
-
-
-
-
-
-
-

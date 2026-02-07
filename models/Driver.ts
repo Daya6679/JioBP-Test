@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
+import { unique } from "next/dist/build/utils";
 
 const DriverSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     phone: { type: String, required: true },
-    licenseNumber: { type: String, required: true },
+    licenseNumber: { type: String, required: true, unique: true, trim: true },
     licenseValidity: { type: Date, required: true },
     address: { type: String },
     isActive: { type: Boolean, default: true },

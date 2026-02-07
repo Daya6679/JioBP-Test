@@ -55,6 +55,10 @@ export default function DriverForm({
     }
   }, [initialValues]);
 
+  const disableDate = (current: any) => {
+    return current && current < dayjs().startOf('day');
+  }
+
   const startCamera = async () => {
     setIsCameraOpen(true);
     try {
@@ -88,14 +92,22 @@ export default function DriverForm({
     setIsCameraOpen(false);
   };
 
-  const onFinishInternal = (values: any) => {
+  const onFinishInternal = async (values: any) => {
     let finalBase64 = imageUrl;
     if (imageUrl.includes(",")) {
       finalBase64 = imageUrl.split(",")[1];
     }
 
     const finalStatus = isEditing ? initialValues?.isActive : true;
-    onSubmit({ ...values, image: finalBase64, isActive: finalStatus });
+    try {
+      await onSubmit({ ...values, image: finalBase64, isActive: finalStatus });
+    } catch (error: any) {
+      if (error.response?.data?.message?.includes("licenseNumber")) {
+        message.error("This License Number is already registered to another driver.");
+      } else {
+        message.error(error.response?.data?.message || "Failed to save driver details.");
+      }
+    }
   };
 
   const preparedValues = initialValues
@@ -224,7 +236,7 @@ export default function DriverForm({
                 </Col>
                 <Col span={12}>
                   <Form.Item name="licenseValidity" label="Expiry Date" rules={[{ required: true }]}>
-                    <DatePicker style={{ width: "100%" }} />
+                    <DatePicker disabledDate={disableDate} style={{ width: "100%" }} />
                   </Form.Item>
                 </Col>
               </Row>
