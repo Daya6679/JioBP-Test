@@ -44,6 +44,7 @@ export async function POST(
       qrData.qty?.toString(),
       qrData.amount?.toString(),
       qrData._id?.toString(),
+      qrData.userId?.toString(),
     ].join("#");
 
     const payload = {
