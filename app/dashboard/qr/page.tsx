@@ -133,82 +133,161 @@ function QRManagementContent() {
     setFilteredQrList(filtered);
   };
 
+  // const createQrRequest = async (values: any) => {
+  //   let hideLoading: (() => void) | null = null;
+  //   try {
+  //     const driverObj = drivers.find((d) => d._id === values.driverId);
+  //     const vehicleObj = vehicles.find((v) => v._id === values.vehicleId);
+
+  //     const today = new Date();
+  //     const expiryDate = driverObj?.licenseExpiry
+  //       ? new Date(driverObj.licenseExpiry)
+  //       : null;
+
+  //     const isExpired = expiryDate && expiryDate < today;
+  //     const isStatusInvalid =
+  //       driverObj?.licenseStatus === "Expired" ||
+  //       driverObj?.licenseStatus === "Suspended";
+
+  //     if (!driverObj || isStatusInvalid || isExpired) {
+  //       notification.error({
+  //         message: "License Validation Failed",
+  //         description: `Cannot generate QR. Driver ${driverObj?.name || ""}'s license is either expired or invalid. Please update the driver records.`,
+  //         placement: "topRight",
+  //       });
+  //       return; // Stop the execution here
+  //     }
+
+  //     // 3. PROCEED IF VALID
+  //     setIsGenerating(true);
+  //     hideLoading = messageApi.loading("Validating & Generating QR Code...", 0);
+
+  //     const submissionData = {
+  //       driverId: values.driverId,
+  //       vehicleId: values.vehicleId,
+  //       fuelType: values.fuelType,
+  //       qty: values.requestType === "liters" ? values.qty : 0,
+  //       amount: values.requestType === "amount" ? values.amount : 0,
+  //     };
+
+  //     const res = await fetch("/api/qrs", {
+  //       method: "POST",
+  //       headers: { "Content-Type": "application/json" },
+  //       body: JSON.stringify(submissionData),
+  //     });
+
+  //     const data = await res.json();
+  //     if (!res.ok)
+  //       throw new Error(data.message || "Failed to create QR request");
+
+  //     const genRes = await fetch(`/api/qrs/${data._id}/generate`, {
+  //       method: "POST",
+  //     });
+  //     const genData = await genRes.json();
+
+  //     if (genRes.ok) {
+  //       messageApi.success("QR Generated Successfully");
+  //       form.resetFields();
+  //       setIsRequestModalOpen(false);
+  //       setQrModal({
+  //         open: true,
+  //         qrBase64: genData.qrBase64 || data.qrBase64,
+  //         driverName: driverObj?.name,
+  //         vehicleNo: vehicleObj?.vehicleNumber,
+  //         fuelType: values.fuelType,
+  //         amountOrQty:
+  //           values.requestType === "liters"
+  //             ? `${values.qty} L`
+  //             : `₹${values.amount}`,
+  //       });
+  //       fetchQrs();
+  //     }
+  //   } catch (err) {
+  //     messageApi.error("Error connecting to server");
+  //   } finally {
+  //     hideLoading?.();
+  //     setIsGenerating(false);
+  //   }
+  // };
+
+
   const createQrRequest = async (values: any) => {
-    let hideLoading: (() => void) | null = null;
-    try {
-      const driverObj = drivers.find((d) => d._id === values.driverId);
-      const vehicleObj = vehicles.find((v) => v._id === values.vehicleId);
+  let hideLoading: (() => void) | null = null;
+  try {
+    const driverObj = drivers.find((d) => d._id === values.driverId);
+    const vehicleObj = vehicles.find((v) => v._id === values.vehicleId);
 
-      const today = new Date();
-      const expiryDate = driverObj?.licenseExpiry
-        ? new Date(driverObj.licenseExpiry)
-        : null;
+    const today = new Date();
+    const expiryDate = driverObj?.licenseExpiry ? new Date(driverObj.licenseExpiry) : null;
+    const isExpired = expiryDate && expiryDate < today;
+    const isStatusInvalid = driverObj?.licenseStatus === "Expired" || driverObj?.licenseStatus === "Suspended";
 
-      const isExpired = expiryDate && expiryDate < today;
-      const isStatusInvalid =
-        driverObj?.licenseStatus === "Expired" ||
-        driverObj?.licenseStatus === "Suspended";
-
-      if (!driverObj || isStatusInvalid || isExpired) {
-        notification.error({
-          message: "License Validation Failed",
-          description: `Cannot generate QR. Driver ${driverObj?.name || ""}'s license is either expired or invalid. Please update the driver records.`,
-          placement: "topRight",
-        });
-        return; // Stop the execution here
-      }
-
-      // 3. PROCEED IF VALID
-      setIsGenerating(true);
-      hideLoading = messageApi.loading("Validating & Generating QR Code...", 0);
-
-      const submissionData = {
-        driverId: values.driverId,
-        vehicleId: values.vehicleId,
-        fuelType: values.fuelType,
-        qty: values.requestType === "liters" ? values.qty : 0,
-        amount: values.requestType === "amount" ? values.amount : 0,
-      };
-
-      const res = await fetch("/api/qrs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(submissionData),
+    if (!driverObj || isStatusInvalid || isExpired) {
+      notification.error({
+        message: "License Validation Failed",
+        description: `Cannot generate QR. Driver ${driverObj?.name || ""}'s license is either expired or invalid.`,
+        placement: "topRight",
       });
-
-      const data = await res.json();
-      if (!res.ok)
-        throw new Error(data.message || "Failed to create QR request");
-
-      const genRes = await fetch(`/api/qrs/${data._id}/generate`, {
-        method: "POST",
-      });
-      const genData = await genRes.json();
-
-      if (genRes.ok) {
-        messageApi.success("QR Generated Successfully");
-        form.resetFields();
-        setIsRequestModalOpen(false);
-        setQrModal({
-          open: true,
-          qrBase64: genData.qrBase64 || data.qrBase64,
-          driverName: driverObj?.name,
-          vehicleNo: vehicleObj?.vehicleNumber,
-          fuelType: values.fuelType,
-          amountOrQty:
-            values.requestType === "liters"
-              ? `${values.qty} L`
-              : `₹${values.amount}`,
-        });
-        fetchQrs();
-      }
-    } catch (err) {
-      messageApi.error("Error connecting to server");
-    } finally {
-      hideLoading?.();
-      setIsGenerating(false);
+      return;
     }
-  };
+
+    setIsGenerating(true);
+    hideLoading = messageApi.loading("Validating & Generating QR Code...", 0);
+
+    const submissionData = {
+      driverId: values.driverId,
+      vehicleId: values.vehicleId,
+      fuelType: values.fuelType,
+      qty: values.requestType === "liters" ? values.qty : 0,
+      amount: values.requestType === "amount" ? values.amount : 0,
+    };
+
+    // Step 1: Create the Request Entry
+    const res = await fetch("/api/qrs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(submissionData),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to create QR request");
+
+    // Step 2: Generate the Actual QR (This hits the External API)
+    const genRes = await fetch(`/api/qrs/${data._id}/generate`, {
+      method: "POST",
+    });
+    
+    const genData = await genRes.json();
+
+    // --- CRITICAL CHECK ---
+    if (!genRes.ok) {
+      // This catches the "API is down" message from your backend
+      throw new Error(genData.message || "QR Generation Failed");
+    }
+
+    // Success Logic
+    messageApi.success("QR Generated Successfully");
+    form.resetFields();
+    setIsRequestModalOpen(false);
+    setQrModal({
+      open: true,
+      qrBase64: genData.qrBase64,
+      driverName: driverObj?.name,
+      vehicleNo: vehicleObj?.vehicleNumber,
+      fuelType: values.fuelType,
+      amountOrQty: values.requestType === "liters" ? `${values.qty} L` : `₹${values.amount}`,
+    });
+    fetchQrs();
+
+  } catch (err: any) {
+    // --- UPDATED CATCH BLOCK ---
+    // Now it shows the specific error from the backend instead of a generic string
+    messageApi.error(err.message || "Error connecting to server");
+  } finally {
+    hideLoading?.();
+    setIsGenerating(false);
+  }
+};
 
   const getSafeFilename = (name: string) =>
     `${name.replace(/\s+/g, "_").toLowerCase()}_qr.png`;

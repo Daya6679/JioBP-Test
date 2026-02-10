@@ -19,19 +19,21 @@ export async function POST(
     const { id } = await params;
 
     const qrData = await QRRequest.findById(id)
-      .populate("driverId", "name image")
+      .populate("driverId", "name image") 
       .populate("vehicleId", "vehicleNumber");
 
     if (!qrData) {
-      return NextResponse.json(
-        { message: "QR request not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ message: "QR request not found" }, { status: 404 });
     }
 
-    // Clean Driver Image
-    const driverImageBase64 =
-      qrData.driverId?.image?.replace(/^data:image\/[a-z]+;base64,/, "");
+    const rawImage = qrData.driverId?.image;
+    if (!rawImage) {
+      return NextResponse.json({ message: "Driver image is missing. Please update driver profile." }, { status: 400 });
+    }
+
+    const driverImageBase64 = rawImage.includes("base64,") 
+      ? rawImage.split("base64,")[1] 
+      : rawImage;
 
     const uidString = [
       qrData.driverId?._id?.toString(),
@@ -53,48 +55,61 @@ export async function POST(
     };
 
     const apiUrl = process.env.SECURE_QR_API_URL;
+    const apiKey = process.env.SECURE_QR_API_KEY;
 
-    if (!apiUrl) {
-      throw new Error(
-        "SECURE_QR_API_URL is not defined in environment variables",
+    if (!apiUrl || !apiKey) {
+      throw new Error("API URL or API Key is missing in environment variables");
+    }
+
+    // --- GRACEFUL ERROR HANDLING & FETCH ---
+    console.log("📡 Contacting Secure QR API with x-api-key...");
+    
+    let response;
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
+      response = await fetch(apiUrl, {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json",
+          "x-api-key": apiKey // NEW HEADER ADDED HERE
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+    } catch (fetchErr: any) {
+      console.error("❌ API Connection Error:", fetchErr.message);
+      return NextResponse.json(
+        { message: "API is down, QR not generated. Please check connection." }, 
+        { status: 503 }
       );
     }
 
-    const response = await fetch(
-      apiUrl,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      },
-    );
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("❌ External API Error Status:", response.status, errorText);
+      return NextResponse.json(
+        { message: "Authentication failed or API error. QR not generated." }, 
+        { status: response.status }
+      );
+    }
 
     const result = await response.json();
 
-    if (!response.ok || result.status !== "success") {
-      throw new Error(
-        result.detail || result.message || "External Service Error",
-      );
+    if (result.status !== "success" || !result.secureQr) {
+      throw new Error(result.message || "Invalid response format from External API");
     }
 
-    const secureString = result.secureQr; // Corrected key
-
-    if (!secureString) {
-      throw new Error(
-        "Service returned success but 'secureQr' data is missing.",
-      );
-    }
-
-    // --- OPTIMIZED QR GENERATION ---
-    // We change errorCorrectionLevel to 'L' to fit more data
-    const qrImageBase64 = await QRCode.toDataURL(secureString, {
-      errorCorrectionLevel: "L", // Changed from H to L for maximum capacity
+    // --- GENERATE QR ---
+    const qrImageBase64 = await QRCode.toDataURL(result.secureQr, {
+      errorCorrectionLevel: "L", 
       margin: 2,
-      width: 600, // Increased width for better scan-ability of dense codes
+      width: 600,
     });
 
     const cleanQRBase64 = qrImageBase64.replace(/^data:image\/[a-z]+;base64,/, "");
-
     qrData.qrBase64 = cleanQRBase64;
     await qrData.save();
 
@@ -102,8 +117,9 @@ export async function POST(
       message: "QR generated successfully",
       qrBase64: cleanQRBase64,
     });
+
   } catch (error: any) {
-    console.error("QR GEN ERROR:", error.message);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    console.error("🚨 GENERAL ERROR:", error.message);
+    return NextResponse.json({ message: error.message || "An unexpected error occurred." }, { status: 500 });
   }
 }
