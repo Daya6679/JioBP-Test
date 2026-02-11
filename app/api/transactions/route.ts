@@ -79,9 +79,12 @@ export async function GET(req: Request) {
 
     // 3. Query the database for transactions where userId matches
     // NOTE: Ensure your Mongoose Model has a 'userId' field
-    const transactions = await Transaction.find({ userId: userId }).sort({
-      createdAt: -1,
-    });
+    const transactions = await Transaction.find({ userId: userId })
+      .populate("driverId", "name") // Only pull the 'name' field from Driver
+      .populate("vehicleId", "vehicleNumber")
+      .sort({
+        createdAt: -1,
+      });
 
     return NextResponse.json(transactions, { status: 200 });
   } catch (error: any) {

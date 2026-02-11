@@ -384,7 +384,8 @@ function QRManagementContent() {
           loading={loading}
           rowKey="_id"
           columns={columns}
-          dataSource={filteredQrList.filter((q) => !q.isUsed)}
+          // dataSource={filteredQrList.filter((q) => !q.isUsed)}
+          dataSource={filteredQrList}
           pagination={{ defaultPageSize: 10, showSizeChanger: true, pageSizeOptions: [10, 20, 50, 100] }}
         />
       </Card>
