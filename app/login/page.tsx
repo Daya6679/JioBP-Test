@@ -129,9 +129,9 @@ export default function LoginPage() {
           {/* CENTER LOGO (Inside the card) */}
           <div className="mb-6 text-center">
             <Image
-              src="./jiobp.png"
+              src="./Jio-bp_logo.svg"
               alt="jiobp-logo"
-              width={140}
+              width={100}
               preview={false}
             />
           </div>

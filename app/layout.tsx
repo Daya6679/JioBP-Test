@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Jio BP",
   description: "",
+  icons: {
+    icon: '/jio-bp_logo.svg',
+  },
 };
 
 export default function RootLayout({

@@ -72,9 +72,9 @@ export default function SignupPage() {
         <Card className="w-full max-w-md shadow-md border-t-4 border-blue-600 mt-12 mb-8">
           <div className="mb-6 text-center">
             <Image
-              src="./jiobp.png"
+              src="./Jio-bp_logo.svg"
               alt="jiobp-logo"
-              width={140}
+              width={100}
               preview={false}
             />
           </div>

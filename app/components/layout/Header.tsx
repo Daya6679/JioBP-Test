@@ -51,9 +51,9 @@ export default function AppHeader({
       >
         <div style={{ display: "flex", alignItems: "center" }}>
           <Image
-            src="/jiobp.png"
+            src="/Jio-bp_logo.svg"
             alt="JioBP Logo"
-            width={100} // Slightly reduced to save horizontal space
+            width={80} // Slightly reduced to save horizontal space
             height={60}
             priority
             style={{ objectFit: "contain" }}
@@ -65,7 +65,7 @@ export default function AppHeader({
             display: "flex",
             alignItems: "center",
             gap: 8,
-            marginLeft: "20px", // Adds specific breathing room from the logo
+            marginLeft: "130px", // Adds specific breathing room from the logo
           }}
         >
           <Button
