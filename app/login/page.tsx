@@ -85,7 +85,7 @@ function LoginForm() {
           label="Password"
           rules={[{ required: true, min: 6 }]}
         >
-          <Input.Password placeholder="Enter your password!" />
+          <Input.Password placeholder="Enter your password" />
         </Form.Item>
 
         <Button
