@@ -55,6 +55,7 @@ pipeline {
                         echo "Restarting PM2..."
                         sudo -u ubuntu ${PM2_PATH} restart jiobp-4002 --update-env || \
                         sudo -u ubuntu ${PM2_PATH} start ecosystem.config.js --update-env
+                        sudo -u ubuntu ${PM2_PATH} save
                     '''
                 }
             }
