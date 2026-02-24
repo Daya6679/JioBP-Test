@@ -82,6 +82,7 @@ pipeline {
                 sh '''
                     # -v gives us the handshake details
                     # -L follows redirects
+                    sleep 10
                     curl -v -f http://127.0.0.1:4002/ || exit 1
                 '''
             }
