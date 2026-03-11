@@ -1,7 +1,7 @@
 @Library('jenkins-shared-library') _
 
 
-nextJsPipeline(
+nextJsNewPipeline(
     folderName: 'JioBP',
     pm2Name: 'jiobp-4002',
     port: '4002',
