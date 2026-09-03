@@ -1,17 +1,63 @@
 pipeline {
+
     agent any
 
     stages {
 
         stage('Checkout') {
             steps {
+                echo "================================="
+                echo "Checking out JioBP source code"
+                echo "================================="
+
                 checkout scm
+
+                echo "Source code checkout completed."
             }
         }
 
+
+        stage('Build JioBP') {
+            steps {
+                echo "================================="
+                echo "Building JioBP"
+                echo "================================="
+
+                sh '''
+                    echo "Node version:"
+                    node -v
+
+                    echo "NPM version:"
+                    npm -v
+
+                    echo "Installing dependencies..."
+                    npm install
+
+                    echo "Building Next.js application..."
+                    npm run build
+
+                    echo "================================="
+                    echo "Build completed successfully"
+                    echo "================================="
+
+                    echo "Checking .next directory..."
+                    ls -lah .next
+
+                    echo "Checking standalone directory..."
+                    ls -lah .next/standalone
+
+                    echo "Checking server.js..."
+                    ls -lah .next/standalone/server.js
+                '''
+            }
+        }
+
+
         stage('Test Jenkins to Staging') {
             steps {
-                sshagent(credentials: ['staging-deploy-key']) {
+
+                sshagent(['staging-deploy-key']) {
+
                     sh '''
                         echo "================================="
                         echo "Jenkins -> Staging SSH Test"
@@ -28,13 +74,17 @@ pipeline {
             }
         }
 
+
         stage('Test SCP to Staging') {
             steps {
+
                 sh '''
-                    echo "Jenkins SCP test file" > jenkins-staging-test.txt
+                    echo "Jenkins SCP test file"
+                    echo "Jenkins -> Staging SCP test" > jenkins-staging-test.txt
                 '''
 
-                sshagent(credentials: ['staging-deploy-key']) {
+                sshagent(['staging-deploy-key']) {
+
                     sh '''
                         scp -o StrictHostKeyChecking=yes \
                             jenkins-staging-test.txt \
@@ -44,9 +94,12 @@ pipeline {
             }
         }
 
+
         stage('Verify Staging') {
             steps {
-                sshagent(credentials: ['staging-deploy-key']) {
+
+                sshagent(['staging-deploy-key']) {
+
                     sh '''
                         ssh -o StrictHostKeyChecking=yes \
                             deploy@3.111.24.72 \
@@ -58,13 +111,20 @@ pipeline {
         }
     }
 
+
     post {
+
         success {
-            echo 'Jenkins -> Staging connectivity test SUCCESSFUL'
+            echo "================================="
+            echo "JioBP staging pipeline TEST SUCCESSFUL"
+            echo "================================="
         }
 
         failure {
-            echo 'Jenkins -> Staging connectivity test FAILED'
+            echo "================================="
+            echo "JioBP staging pipeline FAILED"
+            echo "Check the stage above for the error."
+            echo "================================="
         }
     }
 }
