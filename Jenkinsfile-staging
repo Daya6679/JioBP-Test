@@ -40,7 +40,7 @@ pipeline {
 
                 withCredentials([
                     file(
-                        credentialsId: 'jiobp-staging-env',
+                        credentialsId: 'jiobp-staging',
                         variable: 'ENV_FILE'
                     )
                 ]) {
@@ -148,11 +148,10 @@ pipeline {
                 echo 'Deploying JioBP to Staging'
                 echo '================================='
 
-                sshagent(credentials: ['deploy']) {
-
+                sshagent(credentials: ['staging-deploy-key']) {
                     withCredentials([
                         file(
-                            credentialsId: 'jiobp-staging-env',
+                            credentialsId: 'jiobp-staging',
                             variable: 'ENV_FILE'
                         )
                     ]) {
@@ -198,7 +197,7 @@ pipeline {
                 echo 'Starting JioBP with PM2'
                 echo '================================='
 
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
                     sh '''
                         set -e
@@ -240,7 +239,7 @@ pipeline {
                 echo 'Verifying JioBP on Staging'
                 echo '================================='
 
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
                     sh '''
                         set -e
