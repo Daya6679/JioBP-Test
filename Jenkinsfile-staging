@@ -85,7 +85,7 @@ pipeline {
                 echo 'Testing Jenkins -> Staging SSH'
                 echo '================================='
 
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
                     sh '''
                         ssh -o StrictHostKeyChecking=yes deploy@3.111.24.72 \
@@ -109,7 +109,7 @@ pipeline {
                     echo "Jenkins staging deployment test" > jenkins-staging-test.txt
                 '''
 
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
                     sh '''
                         scp -o StrictHostKeyChecking=yes \
@@ -127,7 +127,7 @@ pipeline {
                 echo 'Verifying Staging Server'
                 echo '================================='
 
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
                     sh '''
                         ssh -o StrictHostKeyChecking=yes deploy@3.111.24.72 \
