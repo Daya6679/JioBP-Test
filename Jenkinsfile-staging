@@ -1,0 +1,70 @@
+pipeline {
+    agent any
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Test Jenkins to Staging') {
+            steps {
+                sshagent(credentials: ['deploy']) {
+                    sh '''
+                        echo "================================="
+                        echo "Jenkins -> Staging SSH Test"
+                        echo "================================="
+
+                        ssh -o StrictHostKeyChecking=yes \
+                            deploy@3.111.24.72 \
+                            "echo 'SSH SUCCESSFUL'; \
+                             echo 'User:' \\$(whoami); \
+                             echo 'Hostname:' \\$(hostname); \
+                             echo 'Directory:' \\$(pwd)"
+                    '''
+                }
+            }
+        }
+
+        stage('Test SCP to Staging') {
+            steps {
+                sh '''
+                    echo "Jenkins SCP test file" > jenkins-staging-test.txt
+                '''
+
+                sshagent(credentials: ['deploy']) {
+                    sh '''
+                        scp -o StrictHostKeyChecking=yes \
+                            jenkins-staging-test.txt \
+                            deploy@3.111.24.72:/home/ubuntu/app/
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Staging') {
+            steps {
+                sshagent(credentials: ['deploy']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=yes \
+                            deploy@3.111.24.72 \
+                            "echo 'File on staging:'; \
+                             cat /home/ubuntu/app/jenkins-staging-test.txt"
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Jenkins -> Staging connectivity test SUCCESSFUL'
+        }
+
+        failure {
+            echo 'Jenkins -> Staging connectivity test FAILED'
+        }
+    }
+}
