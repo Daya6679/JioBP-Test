@@ -1,13 +1,13 @@
 module.exports = {
     apps: [{
-        name: 'jiobp-4002',
+        name: "jiobp-staging",
         script: "server.js",
-        cwd: '/home/ubuntu/apps/JioBP',
-        exec_mode: 'fork',
+        cwd: "/home/ubuntu/app/jiobp",
+        exec_mode: "fork",
         instances: 1,
         env: {
-            NODE_ENV: 'production',
-            PORT: 4002
-        },
+            NODE_ENV: "production",
+            PORT: 3000
+        }
     }]
-}
+};

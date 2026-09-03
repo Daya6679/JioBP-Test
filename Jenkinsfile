@@ -3,8 +3,8 @@
 
 nextJsNewPipeline(
     folderName: 'JioBP',
-    pm2Name: 'jiobp-4002',
-    port: '4002',
+    pm2Name: 'jiobp-3000',
+    port: '3000',
     secretId:'JioBP',
     daType:'mongoDB'
 )
