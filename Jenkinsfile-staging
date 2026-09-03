@@ -11,7 +11,7 @@ pipeline {
 
         stage('Test Jenkins to Staging') {
             steps {
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
                     sh '''
                         echo "================================="
                         echo "Jenkins -> Staging SSH Test"
@@ -34,7 +34,7 @@ pipeline {
                     echo "Jenkins SCP test file" > jenkins-staging-test.txt
                 '''
 
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
                     sh '''
                         scp -o StrictHostKeyChecking=yes \
                             jenkins-staging-test.txt \
@@ -46,7 +46,7 @@ pipeline {
 
         stage('Verify Staging') {
             steps {
-                sshagent(credentials: ['deploy']) {
+                sshagent(credentials: ['staging-deploy-key']) {
                     sh '''
                         ssh -o StrictHostKeyChecking=yes \
                             deploy@3.111.24.72 \
