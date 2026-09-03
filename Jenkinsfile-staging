@@ -6,125 +6,171 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                echo "================================="
-                echo "Checking out JioBP source code"
-                echo "================================="
+                echo '================================='
+                echo 'Checking out JioBP source code'
+                echo '================================='
 
                 checkout scm
 
-                echo "Source code checkout completed."
+                echo 'Source code checkout completed.'
             }
         }
-
 
         stage('Build JioBP') {
             steps {
-                echo "================================="
-                echo "Building JioBP"
-                echo "================================="
 
-                sh '''
-                    echo "Node version:"
-                    node -v
+                echo '================================='
+                echo 'Building JioBP'
+                echo '================================='
 
-                    echo "NPM version:"
-                    npm -v
+                withCredentials([
+                    file(
+                        credentialsId: 'JioBP-Staging',
+                        variable: 'ENV_FILE'
+                    )
+                ]) {
 
-                    echo "Installing dependencies..."
-                    npm install
+                    sh '''
+                        set -e
 
-                    echo "Building Next.js application..."
-                    npm run build
+                        echo "Node version:"
+                        node -v
 
-                    echo "================================="
-                    echo "Build completed successfully"
-                    echo "================================="
+                        echo "NPM version:"
+                        npm -v
 
-                    echo "Checking .next directory..."
-                    ls -lah .next
+                        echo "================================="
+                        echo "Preparing staging environment"
+                        echo "================================="
 
-                    echo "Checking standalone directory..."
-                    ls -lah .next/standalone
+                        cp "$ENV_FILE" .env
 
-                    echo "Checking server.js..."
-                    ls -lah .next/standalone/server.js
-                '''
+                        echo "Staging .env file copied."
+
+                        echo "================================="
+                        echo "Installing dependencies"
+                        echo "================================="
+
+                        npm install
+
+                        echo "================================="
+                        echo "Building Next.js application"
+                        echo "================================="
+
+                        npm run build
+
+                        echo "================================="
+                        echo "Build completed successfully"
+                        echo "================================="
+
+                        echo "Checking Next.js standalone output..."
+
+                        if [ -f ".next/standalone/server.js" ]; then
+                            echo "Standalone server.js found."
+                        else
+                            echo "ERROR: .next/standalone/server.js not found."
+                            exit 1
+                        fi
+
+                        echo "Build verification completed."
+                    }
+                }
             }
         }
-
 
         stage('Test Jenkins to Staging') {
             steps {
 
-                sshagent(['staging-deploy-key']) {
+                echo '================================='
+                echo 'Testing Jenkins -> Staging SSH'
+                echo '================================='
+
+                sshagent(credentials: ['deploy']) {
 
                     sh '''
-                        echo "================================="
-                        echo "Jenkins -> Staging SSH Test"
-                        echo "================================="
-
                         ssh -o StrictHostKeyChecking=yes \
-                            deploy@3.111.24.72 \
-                            "echo 'SSH SUCCESSFUL'; \
-                             echo 'User:' \\$(whoami); \
-                             echo 'Hostname:' \\$(hostname); \
-                             echo 'Directory:' \\$(pwd)"
+                        deploy@3.111.24.72 \
+                        "echo 'SSH SUCCESSFUL'; \
+                         echo 'User:' \\$(whoami); \
+                         echo 'Hostname:' \\$(hostname); \
+                         echo 'Directory:' \\$(pwd)"
                     '''
                 }
             }
         }
-
 
         stage('Test SCP to Staging') {
             steps {
 
+                echo '================================='
+                echo 'Testing Jenkins -> Staging SCP'
+                echo '================================='
+
                 sh '''
-                    echo "Jenkins SCP test file"
-                    echo "Jenkins -> Staging SCP test" > jenkins-staging-test.txt
+                    echo "Jenkins staging deployment test" > jenkins-staging-test.txt
                 '''
 
-                sshagent(['staging-deploy-key']) {
+                sshagent(credentials: ['deploy']) {
 
                     sh '''
                         scp -o StrictHostKeyChecking=yes \
-                            jenkins-staging-test.txt \
-                            deploy@3.111.24.72:/home/ubuntu/app/
+                        jenkins-staging-test.txt \
+                        deploy@3.111.24.72:/home/ubuntu/app/
                     '''
                 }
             }
         }
 
-
         stage('Verify Staging') {
             steps {
 
-                sshagent(['staging-deploy-key']) {
+                echo '================================='
+                echo 'Verifying Staging Server'
+                echo '================================='
+
+                sshagent(credentials: ['deploy']) {
 
                     sh '''
                         ssh -o StrictHostKeyChecking=yes \
-                            deploy@3.111.24.72 \
-                            "echo 'File on staging:'; \
-                             cat /home/ubuntu/app/jenkins-staging-test.txt"
+                        deploy@3.111.24.72 \
+                        "echo 'File on staging:'; \
+                         cat /home/ubuntu/app/jenkins-staging-test.txt"
                     '''
                 }
             }
         }
     }
 
-
     post {
 
+        always {
+
+            echo 'Cleaning Jenkins workspace...'
+
+            sh '''
+                rm -f .env
+                rm -f jenkins-staging-test.txt
+            '''
+        }
+
         success {
-            echo "================================="
-            echo "JioBP staging pipeline TEST SUCCESSFUL"
-            echo "================================="
+
+            echo '''
+=================================
+JioBP staging pipeline SUCCESSFUL
+=================================
+'''
         }
 
         failure {
-            echo "================================="
-            echo "JioBP staging pipeline FAILED"
-            echo "Check the stage above for the error."
-            echo "================================="
+
+            echo '''
+=================================
+JioBP staging pipeline FAILED
+=================================
+Check the failed stage above.
+=================================
+'''
         }
     }
 }
