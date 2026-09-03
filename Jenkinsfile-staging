@@ -45,7 +45,7 @@ pipeline {
 
                         cp "$ENV_FILE" .env
 
-                        echo "Staging .env file copied."
+                        echo "Staging environment prepared."
 
                         echo "================================="
                         echo "Installing dependencies"
@@ -63,7 +63,7 @@ pipeline {
                         echo "Build completed successfully"
                         echo "================================="
 
-                        echo "Checking Next.js standalone output..."
+                        echo "Checking standalone output..."
 
                         if [ -f ".next/standalone/server.js" ]; then
                             echo "Standalone server.js found."
@@ -73,7 +73,7 @@ pipeline {
                         fi
 
                         echo "Build verification completed."
-                    }
+                    '''
                 }
             }
         }
@@ -88,12 +88,11 @@ pipeline {
                 sshagent(credentials: ['deploy']) {
 
                     sh '''
-                        ssh -o StrictHostKeyChecking=yes \
-                        deploy@3.111.24.72 \
+                        ssh -o StrictHostKeyChecking=yes deploy@3.111.24.72 \
                         "echo 'SSH SUCCESSFUL'; \
-                         echo 'User:' \\$(whoami); \
-                         echo 'Hostname:' \\$(hostname); \
-                         echo 'Directory:' \\$(pwd)"
+                        echo 'User:' \\$(whoami); \
+                        echo 'Hostname:' \\$(hostname); \
+                        echo 'Directory:' \\$(pwd)"
                     '''
                 }
             }
@@ -131,10 +130,9 @@ pipeline {
                 sshagent(credentials: ['deploy']) {
 
                     sh '''
-                        ssh -o StrictHostKeyChecking=yes \
-                        deploy@3.111.24.72 \
+                        ssh -o StrictHostKeyChecking=yes deploy@3.111.24.72 \
                         "echo 'File on staging:'; \
-                         cat /home/ubuntu/app/jenkins-staging-test.txt"
+                        cat /home/ubuntu/app/jenkins-staging-test.txt"
                     '''
                 }
             }
