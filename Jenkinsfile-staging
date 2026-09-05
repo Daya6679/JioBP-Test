@@ -269,14 +269,17 @@ EOF
 
 
                             echo "================================="
-                            echo "Creating remote deployment directory"
+                            echo "Preparing remote deployment directory"
                             echo "================================="
 
                             ssh \
-                            -o StrictHostKeyChecking=yes \
+                            -o StrictHostKeyChecking=no \
                             ${DEPLOY_USER}@${STAGING_HOST} \
-                            "mkdir -p ${DEPLOY_PATH}"
-
+                            "
+                            sudo mkdir -p ${DEPLOY_PATH}
+                            sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}
+                            rm -rf ${DEPLOY_PATH:?}/* 2>/dev/null || true
+                            "
 
                             echo "================================="
                             echo "Copying application to staging"
@@ -284,17 +287,16 @@ EOF
 
                             scp \
                             -r \
-                            -o StrictHostKeyChecking=yes \
+                            -o StrictHostKeyChecking=no \
                             deploy-package/. \
                             ${DEPLOY_USER}@${STAGING_HOST}:${DEPLOY_PATH}/
-
 
                             echo "================================="
                             echo "Fixing file ownership"
                             echo "================================="
 
                             ssh \
-                            -o StrictHostKeyChecking=yes \
+                            -o StrictHostKeyChecking=no \
                             ${DEPLOY_USER}@${STAGING_HOST} \
                             "sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}"
 
@@ -304,7 +306,7 @@ EOF
                             echo "================================="
 
                             ssh \
-                            -o StrictHostKeyChecking=yes \
+                            -o StrictHostKeyChecking=no \
                             ${DEPLOY_USER}@${STAGING_HOST} \
                             "
                             cd ${DEPLOY_PATH}
@@ -375,7 +377,7 @@ EOF
                         echo "================================="
 
                         ssh \
-                        -o StrictHostKeyChecking=yes \
+                        -o StrictHostKeyChecking=no \
                         ${DEPLOY_USER}@${STAGING_HOST} \
                         "${PM2_BIN} status ${PM2_NAME}"
 
@@ -385,7 +387,7 @@ EOF
                         echo "================================="
 
                         ssh \
-                        -o StrictHostKeyChecking=yes \
+                        -o StrictHostKeyChecking=no \
                         ${DEPLOY_USER}@${STAGING_HOST} \
                         "${PM2_BIN} describe ${PM2_NAME}"
 
@@ -395,7 +397,7 @@ EOF
                         echo "================================="
 
                         ssh \
-                        -o StrictHostKeyChecking=yes \
+                        -o StrictHostKeyChecking=no \
                         ${DEPLOY_USER}@${STAGING_HOST} \
                         "curl -f http://127.0.0.1:${PORT}/"
 
