@@ -30,7 +30,7 @@ pipeline {
 
         // Jenkins credentials
         ENV_CREDENTIAL_ID = "jiobp-staging"
-        SSH_CREDENTIAL_ID = "jiobp-staging"
+        SSH_CREDENTIAL_ID = "jiobp-staging-ssh"
 
         // Node / PM2
         PM2_BIN = "/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2"
