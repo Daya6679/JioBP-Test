@@ -30,7 +30,7 @@ pipeline {
 
         // Jenkins credentials
         ENV_CREDENTIAL_ID = "jiobp-staging"
-        SSH_CREDENTIAL_ID = "staging-deploy-key"
+        SSH_CREDENTIAL_ID = "jiobp-staging"
 
         // Node / PM2
         PM2_BIN = "/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2"
@@ -224,37 +224,22 @@ pipeline {
 
                             mkdir -p deploy-package
 
-                            # ------------------------------------------------
                             # Copy Next.js standalone build
-                            # ------------------------------------------------
-
                             cp -a .next/standalone/. deploy-package/
 
-                            # ------------------------------------------------
                             # Copy Next.js static files
-                            # ------------------------------------------------
-
                             mkdir -p deploy-package/.next
-
                             cp -a .next/static deploy-package/.next/
 
-                            # ------------------------------------------------
                             # Copy public directory
-                            # ------------------------------------------------
-
                             if [ -d "public" ]; then
                                 cp -a public deploy-package/
                             fi
 
-                            # ------------------------------------------------
                             # Copy staging environment
-                            # ------------------------------------------------
-
                             cp "${SECRET_ENV_FILE}" deploy-package/.env
 
-                            # ------------------------------------------------
                             # Create PM2 configuration
-                            # ------------------------------------------------
 
                             cat > deploy-package/ecosystem.config.js <<EOF
 module.exports = {
@@ -288,7 +273,7 @@ EOF
                             echo "================================="
 
                             ssh \
-                            -o StrictHostKeyChecking=no \
+                            -o StrictHostKeyChecking=yes \
                             ${DEPLOY_USER}@${STAGING_HOST} \
                             "mkdir -p ${DEPLOY_PATH}"
 
@@ -299,7 +284,7 @@ EOF
 
                             scp \
                             -r \
-                            -o StrictHostKeyChecking=no \
+                            -o StrictHostKeyChecking=yes \
                             deploy-package/. \
                             ${DEPLOY_USER}@${STAGING_HOST}:${DEPLOY_PATH}/
 
@@ -309,7 +294,7 @@ EOF
                             echo "================================="
 
                             ssh \
-                            -o StrictHostKeyChecking=no \
+                            -o StrictHostKeyChecking=yes \
                             ${DEPLOY_USER}@${STAGING_HOST} \
                             "sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}"
 
@@ -319,7 +304,7 @@ EOF
                             echo "================================="
 
                             ssh \
-                            -o StrictHostKeyChecking=no \
+                            -o StrictHostKeyChecking=yes \
                             ${DEPLOY_USER}@${STAGING_HOST} \
                             "
                             cd ${DEPLOY_PATH}
@@ -390,7 +375,7 @@ EOF
                         echo "================================="
 
                         ssh \
-                        -o StrictHostKeyChecking=no \
+                        -o StrictHostKeyChecking=yes \
                         ${DEPLOY_USER}@${STAGING_HOST} \
                         "${PM2_BIN} status ${PM2_NAME}"
 
@@ -400,7 +385,7 @@ EOF
                         echo "================================="
 
                         ssh \
-                        -o StrictHostKeyChecking=no \
+                        -o StrictHostKeyChecking=yes \
                         ${DEPLOY_USER}@${STAGING_HOST} \
                         "${PM2_BIN} describe ${PM2_NAME}"
 
@@ -410,7 +395,7 @@ EOF
                         echo "================================="
 
                         ssh \
-                        -o StrictHostKeyChecking=no \
+                        -o StrictHostKeyChecking=yes \
                         ${DEPLOY_USER}@${STAGING_HOST} \
                         "curl -f http://127.0.0.1:${PORT}/"
 
