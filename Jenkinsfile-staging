@@ -1,317 +1,585 @@
 pipeline {
-
     agent any
 
+    tools {
+        nodejs "nodejs-23"
+    }
+
     environment {
-        STAGING_HOST = '3.111.24.72'
-        STAGING_USER = 'deploy'
-        STAGING_APP_DIR = '/home/ubuntu/app/jiobp'
-        PM2_NAME = 'jiobp-staging'
-        APP_PORT = '3000'
+
+        /*
+         * ============================================================
+         * STAGING CONFIGURATION
+         * Change these values for each project.
+         * ============================================================
+         */
+
+        APP_NAME        = "jiobp"
+        PM2_NAME        = "jiobp-staging"
+        DEPLOY_PATH     = "/home/ubuntu/app/jiobp"
+        DEPLOY_USER     = "ubuntu"
+        STAGING_HOST    = "3.111.24.72"
+        PORT            = "3000"
+
+        /*
+         * Jenkins Credentials
+         *
+         * Create this credential in:
+         * Jenkins -> Manage Jenkins -> Credentials
+         *
+         * Type: Secret file
+         * ID: jiobp-staging
+         *
+         * The file should contain the staging .env.
+         */
+        ENV_CREDENTIAL_ID = "jiobp-staging"
+
+        /*
+         * Node.js binaries
+         */
+        NODE_BIN = "/home/ubuntu/.nvm/versions/node/v23.11.1/bin/node"
+        NPM_BIN  = "/home/ubuntu/.nvm/versions/node/v23.11.1/bin/npm"
+        PM2_BIN  = "/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2"
+
+        /*
+         * Next.js standalone server
+         */
+        STANDALONE_SERVER = ".next/standalone/server.js"
     }
 
     stages {
 
-        stage('Checkout') {
+        /*
+         * ============================================================
+         * 1. CHECKOUT
+         * ============================================================
+         */
+        stage("Checkout") {
             steps {
-                echo '================================='
-                echo 'Checking out JioBP source code'
-                echo '================================='
 
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: '*/feature-daya']],
-                    userRemoteConfigs: [[
-                        credentialsId: 'biometrik-github-access-token',
-                        url: 'https://github.com/biometrik-systems/JioBP.git'
-                    ]]
-                ])
+                echo "================================="
+                echo "Checking out source code"
+                echo "================================="
 
-                echo 'Source code checkout completed.'
+                deleteDir()
+
+                checkout scm
+
+                echo "Source code checkout completed."
             }
         }
 
-        stage('Build JioBP') {
+
+        /*
+         * ============================================================
+         * 2. PREPARE ENVIRONMENT
+         * ============================================================
+         */
+        stage("Prepare Environment") {
             steps {
 
-                echo '================================='
-                echo 'Building JioBP'
-                echo '================================='
+                echo "================================="
+                echo "Preparing staging environment"
+                echo "================================="
 
                 withCredentials([
                     file(
-                        credentialsId: 'jiobp-staging',
-                        variable: 'ENV_FILE'
+                        credentialsId: "${ENV_CREDENTIAL_ID}",
+                        variable: "SECRET_ENV_FILE"
                     )
                 ]) {
 
                     sh '''
                         set -e
 
-                        echo "Node version:"
-                        node -v
+                        echo "Copying staging environment file..."
 
-                        echo "NPM version:"
-                        npm -v
+                        cp "${SECRET_ENV_FILE}" .env
 
-                        echo "================================="
-                        echo "Preparing staging environment"
-                        echo "================================="
-
-                        cp "$ENV_FILE" .env
+                        chmod 600 .env
 
                         echo "Staging environment prepared."
-
-                        echo "================================="
-                        echo "Installing dependencies"
-                        echo "================================="
-
-                        npm install
-
-                        echo "================================="
-                        echo "Building Next.js application"
-                        echo "================================="
-
-                        npm run build
-
-                        echo "================================="
-                        echo "Checking standalone output"
-                        echo "================================="
-
-                        test -f .next/standalone/server.js
-
-                        echo "Standalone server.js found."
-                        echo "Build verification completed."
                     '''
                 }
             }
         }
 
-        stage('Prepare Deployment Package') {
+
+        /*
+         * ============================================================
+         * 3. INSTALL DEPENDENCIES
+         * ============================================================
+         */
+        stage("Install Dependencies") {
             steps {
 
-                echo '================================='
-                echo 'Preparing deployment package'
-                echo '================================='
+                echo "================================="
+                echo "Installing dependencies"
+                echo "================================="
 
                 sh '''
                     set -e
 
-                    rm -rf deploy-package
-                    mkdir -p deploy-package
+                    echo "Node version:"
+                    node -v
 
-                    echo "Copying standalone application..."
+                    echo "NPM version:"
+                    npm -v
 
-                    cp -R .next/standalone/* deploy-package/
+                    echo "Installing dependencies..."
 
-                    echo "Copying static files..."
+                    npm install
 
-                    mkdir -p deploy-package/.next/static
-                    cp -R .next/static/* deploy-package/.next/static/
-
-                    echo "Copying public directory if available..."
-
-                    if [ -d public ]; then
-                        cp -R public deploy-package/
-                    fi
-
-                    echo "Creating PM2 ecosystem configuration..."
-
-                    cat > deploy-package/ecosystem.config.js <<'EOF'
-                    module.exports = {
-                      apps: [{
-                        name: "jiobp-staging",
-                        script: "server.js",
-                        cwd: "/home/ubuntu/app/jiobp",
-                        exec_mode: "fork",
-                        instances: 1,
-                        env: {
-                          NODE_ENV: "production",
-                          PORT: 3000
-                        }
-                      }]
-                    };
-                    EOF
-
-                    echo "Deployment package prepared."
-
-                    echo "Package contents:"
-                    find deploy-package -maxdepth 2 -type f | sort | head -100
+                    echo "Dependencies installed successfully."
                 '''
             }
         }
 
-        stage('Deploy to Staging') {
+
+        /*
+         * ============================================================
+         * 4. BUILD
+         * ============================================================
+         */
+        stage("Build") {
             steps {
 
-                echo '================================='
-                echo 'Deploying JioBP to Staging'
-                echo '================================='
+                echo "================================="
+                echo "Building Next.js application"
+                echo "================================="
 
-                sshagent(credentials: ['staging-deploy-key']) {
-                    withCredentials([
-                        file(
-                            credentialsId: 'jiobp-staging',
-                            variable: 'ENV_FILE'
-                        )
-                    ]) {
+                sh '''
+                    set -e
+
+                    echo "Starting Next.js production build..."
+
+                    npm run build
+
+                    echo "Next.js build completed."
+                '''
+            }
+        }
+
+
+        /*
+         * ============================================================
+         * 5. VERIFY BUILD
+         * ============================================================
+         */
+        stage("Verify Build") {
+            steps {
+
+                echo "================================="
+                echo "Verifying standalone build"
+                echo "================================="
+
+                sh '''
+                    set -e
+
+                    echo "Checking standalone server..."
+
+                    if [ ! -f "${STANDALONE_SERVER}" ]; then
+                        echo "ERROR: Standalone server.js not found!"
+                        echo "Expected:"
+                        echo "${STANDALONE_SERVER}"
+                        exit 1
+                    fi
+
+                    echo "Standalone server found."
+
+                    echo "Checking .next/standalone..."
+
+                    ls -lah .next/standalone
+
+                    echo "Checking .next/static..."
+
+                    if [ -d ".next/static" ]; then
+                        ls -lah .next/static
+                    else
+                        echo "WARNING: .next/static not found."
+                    fi
+
+                    echo "Build verification successful."
+                '''
+            }
+        }
+
+
+        /*
+         * ============================================================
+         * 6. TEST SSH
+         * ============================================================
+         */
+        stage("Test SSH") {
+            steps {
+
+                echo "================================="
+                echo "Testing Jenkins -> Staging SSH"
+                echo "================================="
+
+                sshagent(credentials: ['deploy']) {
+
+                    sh '''
+                        set -e
+
+                        ssh \
+                        -o StrictHostKeyChecking=yes \
+                        ${DEPLOY_USER}@${STAGING_HOST} \
+                        "echo SSH SUCCESSFUL && \
+                         echo User: \\$(whoami) && \
+                         echo Hostname: \\$(hostname)"
+                    '''
+                }
+            }
+        }
+
+
+        /*
+         * ============================================================
+         * 7. DEPLOY
+         * ============================================================
+         */
+        stage("Deploy to Staging") {
+            steps {
+
+                echo "================================="
+                echo "Deploying application to staging"
+                echo "================================="
+
+                withCredentials([
+                    file(
+                        credentialsId: "${ENV_CREDENTIAL_ID}",
+                        variable: "SECRET_ENV_FILE"
+                    )
+                ]) {
+
+                    sshagent(credentials: ['deploy']) {
 
                         sh '''
                             set -e
 
-                            echo "Creating staging application directory..."
+                            echo "Preparing deployment package..."
 
-                            ssh -o StrictHostKeyChecking=yes \
-                                ${STAGING_USER}@${STAGING_HOST} \
-                                "mkdir -p ${STAGING_APP_DIR}"
+                            rm -rf deploy-package
 
-                            echo "Cleaning old application files..."
+                            mkdir -p deploy-package
 
-                            ssh -o StrictHostKeyChecking=yes \
-                                ${STAGING_USER}@${STAGING_HOST} \
-                                "rm -rf ${STAGING_APP_DIR}/*"
+                            /*
+                             * Copy Next.js standalone build.
+                             */
+                            cp -a .next/standalone/. deploy-package/
 
-                            echo "Copying deployment package..."
+                            /*
+                             * Copy static files.
+                             */
+                            mkdir -p deploy-package/.next
 
-                            scp -o StrictHostKeyChecking=yes \
-                                -r deploy-package/* \
-                                ${STAGING_USER}@${STAGING_HOST}:${STAGING_APP_DIR}/
+                            cp -a .next/static deploy-package/.next/
 
-                            echo "Copying staging environment file..."
+                            /*
+                             * Copy public directory.
+                             */
+                            if [ -d "public" ]; then
+                                cp -a public deploy-package/
+                            fi
 
-                            scp -o StrictHostKeyChecking=yes \
-                                "$ENV_FILE" \
-                                ${STAGING_USER}@${STAGING_HOST}:${STAGING_APP_DIR}/.env
+                            /*
+                             * Copy ecosystem configuration if present.
+                             */
+                            if [ -f "ecosystem.config.js" ]; then
+                                cp ecosystem.config.js deploy-package/
+                            fi
 
-                            echo "Deployment files copied successfully."
+                            /*
+                             * Copy staging environment.
+                             */
+                            cp "${SECRET_ENV_FILE}" deploy-package/.env
+
+                            echo "Deployment package created."
+
+                            echo "Package contents:"
+                            find deploy-package -maxdepth 3 -type f | sort
                         '''
+
+
+                        echo "================================="
+                        echo "Copying files to staging server"
+                        echo "================================="
+
+                        sh '''
+                            set -e
+
+                            /*
+                             * Create deployment directory.
+                             */
+                            ssh \
+                            -o StrictHostKeyChecking=yes \
+                            ${DEPLOY_USER}@${STAGING_HOST} \
+                            "mkdir -p ${DEPLOY_PATH}"
+                        '''
+
+                        /*
+                         * Copy deployment package.
+                         */
+                        sh '''
+                            set -e
+
+                            scp \
+                            -r \
+                            -o StrictHostKeyChecking=yes \
+                            deploy-package/. \
+                            ${DEPLOY_USER}@${STAGING_HOST}:${DEPLOY_PATH}/
+                        '''
+
+
+                        /*
+                         * Fix ownership.
+                         */
+                        sh '''
+                            set -e
+
+                            ssh \
+                            -o StrictHostKeyChecking=yes \
+                            ${DEPLOY_USER}@${STAGING_HOST} \
+                            "sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}"
+                        '''
+
+                        echo "Files copied successfully."
                     }
                 }
             }
         }
 
-        stage('Start JioBP with PM2') {
+
+        /*
+         * ============================================================
+         * 8. VERIFY DEPLOYMENT FILES
+         * ============================================================
+         */
+        stage("Verify Deployment") {
             steps {
 
-                echo '================================='
-                echo 'Starting JioBP with PM2'
-                echo '================================='
+                echo "================================="
+                echo "Verifying deployment files"
+                echo "================================="
 
-                sshagent(credentials: ['staging-deploy-key']) {
+                sshagent(credentials: ['deploy']) {
 
                     sh '''
                         set -e
 
-                        ssh -o StrictHostKeyChecking=yes \
-                            ${STAGING_USER}@${STAGING_HOST} \
-                            "
-                            export PATH=\\$HOME/.npm-global/bin:\\$PATH;
+                        ssh \
+                        -o StrictHostKeyChecking=yes \
+                        ${DEPLOY_USER}@${STAGING_HOST} \
+                        "
+                        echo 'Deployment directory:';
+                        ls -lah ${DEPLOY_PATH};
 
-                            cd ${STAGING_APP_DIR};
+                        echo '';
+                        echo 'Next.js directory:';
+                        ls -lah ${DEPLOY_PATH}/.next;
 
-                            echo 'Checking PM2...';
-                            pm2 -v;
+                        echo '';
+                        echo 'Standalone server:';
+                        ls -lh ${DEPLOY_PATH}/server.js;
 
-                            echo 'Checking application files...';
-                            ls -la;
-
-                            echo 'Stopping existing application if running...';
-                            pm2 delete ${PM2_NAME} || true;
-
-                            echo 'Starting JioBP...';
-                            pm2 start ecosystem.config.js;
-
-                            echo 'Saving PM2 process list...';
-                            pm2 save;
-
-                            echo 'PM2 status:';
-                            pm2 list;
-                            "
+                        echo '';
+                        echo 'Environment file:';
+                        ls -lh ${DEPLOY_PATH}/.env;
+                        "
                     '''
                 }
             }
         }
 
-        stage('Verify JioBP') {
+
+        /*
+         * ============================================================
+         * 9. CREATE / UPDATE PM2 CONFIG
+         * ============================================================
+         */
+        stage("Configure PM2") {
             steps {
 
-                echo '================================='
-                echo 'Verifying JioBP on Staging'
-                echo '================================='
+                echo "================================="
+                echo "Configuring PM2"
+                echo "================================="
 
-                sshagent(credentials: ['staging-deploy-key']) {
+                sshagent(credentials: ['deploy']) {
 
                     sh '''
                         set -e
 
-                        ssh -o StrictHostKeyChecking=yes \
-                            ${STAGING_USER}@${STAGING_HOST} \
-                            "
-                            export PATH=\\$HOME/.npm-global/bin:\\$PATH;
+                        ssh \
+                        -o StrictHostKeyChecking=yes \
+                        ${DEPLOY_USER}@${STAGING_HOST} \
+                        "
+                        cd ${DEPLOY_PATH}
 
-                            echo '=================================';
-                            echo 'PM2 Status';
-                            echo '=================================';
+                        cat > ecosystem.config.js <<'EOF'
+module.exports = {
+    apps: [{
+        name: '${PM2_NAME}',
+        script: 'server.js',
+        cwd: '${DEPLOY_PATH}',
+        exec_mode: 'fork',
+        instances: 1,
+        autorestart: true,
+        watch: false,
+        max_memory_restart: '500M',
 
-                            pm2 list;
+        env: {
+            NODE_ENV: 'production',
+            PORT: ${PORT}
+        }
+    }]
+};
+EOF
 
-                            echo '=================================';
-                            echo 'Checking port 3000';
-                            echo '=================================';
+                        echo 'PM2 configuration created:'
+                        cat ecosystem.config.js
+                        "
+                    '''
+                }
+            }
+        }
 
-                            ss -lnt | grep ':3000' || true;
 
-                            echo '=================================';
-                            echo 'Checking application locally';
-                            echo '=================================';
+        /*
+         * ============================================================
+         * 10. START / RESTART PM2
+         * ============================================================
+         */
+        stage("Start Application") {
+            steps {
 
-                            curl -I http://127.0.0.1:3000 || true;
-                            "
+                echo "================================="
+                echo "Starting JioBP with PM2"
+                echo "================================="
+
+                sshagent(credentials: ['deploy']) {
+
+                    sh '''
+                        set -e
+
+                        ssh \
+                        -o StrictHostKeyChecking=yes \
+                        ${DEPLOY_USER}@${STAGING_HOST} \
+                        "
+                        cd ${DEPLOY_PATH}
+
+                        echo 'Stopping old PM2 process if present...'
+
+                        ${PM2_BIN} delete ${PM2_NAME} || true
+
+                        echo 'Starting application...'
+
+                        ${PM2_BIN} start ecosystem.config.js --update-env
+
+                        echo 'Saving PM2 process list...'
+
+                        ${PM2_BIN} save
+
+                        echo 'PM2 status:'
+
+                        ${PM2_BIN} status
+                        "
+                    '''
+                }
+            }
+        }
+
+
+        /*
+         * ============================================================
+         * 11. HEALTH CHECK
+         * ============================================================
+         */
+        stage("Health Check") {
+            steps {
+
+                echo "================================="
+                echo "Checking application health"
+                echo "================================="
+
+                sshagent(credentials: ['deploy']) {
+
+                    sh '''
+                        set -e
+
+                        echo "Waiting for application to start..."
+
+                        sleep 10
+
+                        echo "Checking PM2 status..."
+
+                        ssh \
+                        -o StrictHostKeyChecking=yes \
+                        ${DEPLOY_USER}@${STAGING_HOST} \
+                        "${PM2_BIN} status ${PM2_NAME}"
+
+                        echo "Checking HTTP endpoint..."
+
+                        ssh \
+                        -o StrictHostKeyChecking=yes \
+                        ${DEPLOY_USER}@${STAGING_HOST} \
+                        "curl -f http://127.0.0.1:${PORT}/"
+
+                        echo ""
+                        echo "================================="
+                        echo "APPLICATION HEALTH CHECK PASSED"
+                        echo "================================="
                     '''
                 }
             }
         }
     }
 
+
+    /*
+     * ================================================================
+     * POST ACTIONS
+     * ================================================================
+     */
     post {
-
-        always {
-
-            echo 'Cleaning Jenkins workspace...'
-
-            sh '''
-                rm -rf deploy-package
-                rm -f .env
-            '''
-        }
 
         success {
 
-            echo '''
-=================================
-JioBP STAGING DEPLOYMENT SUCCESSFUL
-=================================
-Application:
-jiobp-staging
-
-Port:
-3000
-
-Status:
-Deployment completed successfully.
-=================================
-'''
+            echo ""
+            echo "================================="
+            echo "JioBP STAGING DEPLOYMENT SUCCESSFUL"
+            echo "================================="
+            echo ""
+            echo "Application:"
+            echo "${PM2_NAME}"
+            echo ""
+            echo "Port:"
+            echo "${PORT}"
+            echo ""
+            echo "Server:"
+            echo "${STAGING_HOST}"
+            echo ""
         }
 
         failure {
 
-            echo '''
-=================================
-JioBP STAGING DEPLOYMENT FAILED
-=================================
-Check the failed stage above.
-=================================
-'''
+            echo ""
+            echo "================================="
+            echo "JioBP STAGING DEPLOYMENT FAILED"
+            echo "================================="
+            echo ""
+            echo "Please check the failed stage above."
+            echo ""
+        }
+
+        always {
+
+            echo "Cleaning Jenkins workspace..."
+
+            sh '''
+                rm -rf deploy-package || true
+                rm -f .env || true
+            '''
         }
     }
 }
