@@ -33,7 +33,7 @@ pipeline {
         SSH_CREDENTIAL_ID = "jiobp-staging-ssh"
 
         // Node / PM2
-        PM2_BIN = "/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2"
+        PM2_BIN = "pm2"
 
     }
 
@@ -304,7 +304,7 @@ EOF
                             ssh \
                             -o StrictHostKeyChecking=no \
                             ${DEPLOY_USER}@${STAGING_HOST} \
-                            "cd ${DEPLOY_PATH} && ${PM2_BIN} delete ${PM2_NAME} || true; cd ${DEPLOY_PATH} && ${PM2_BIN} start ecosystem.config.js --update-env && ${PM2_BIN} save && ${PM2_BIN} status"
+                            "bash -l -c 'cd ${DEPLOY_PATH} && (pm2 delete ${PM2_NAME} || true) && pm2 start ecosystem.config.js --update-env && pm2 save && pm2 status'"
 
                             echo "================================="
                             echo "Deployment completed"
@@ -352,7 +352,7 @@ EOF
                         ssh \
                         -o StrictHostKeyChecking=no \
                         ${DEPLOY_USER}@${STAGING_HOST} \
-                        "${PM2_BIN} status ${PM2_NAME}"
+                        "bash -l -c 'pm2 status ${PM2_NAME}'"
 
 
                         echo "================================="
@@ -362,7 +362,7 @@ EOF
                         ssh \
                         -o StrictHostKeyChecking=no \
                         ${DEPLOY_USER}@${STAGING_HOST} \
-                        "${PM2_BIN} describe ${PM2_NAME}"
+                        "bash -l -c 'pm2 describe ${PM2_NAME}'"
 
 
                         echo "================================="
