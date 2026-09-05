@@ -275,11 +275,7 @@ EOF
                             ssh \
                             -o StrictHostKeyChecking=no \
                             ${DEPLOY_USER}@${STAGING_HOST} \
-                            "
-                            sudo mkdir -p ${DEPLOY_PATH}
-                            sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}
-                            rm -rf ${DEPLOY_PATH:?}/* 2>/dev/null || true
-                            "
+                            "sudo rm -rf ${DEPLOY_PATH} && sudo mkdir -p ${DEPLOY_PATH} && sudo chown -R ${DEPLOY_USER}:${DEPLOY_USER} ${DEPLOY_PATH}"
 
                             echo "================================="
                             echo "Copying application to staging"
@@ -308,30 +304,7 @@ EOF
                             ssh \
                             -o StrictHostKeyChecking=no \
                             ${DEPLOY_USER}@${STAGING_HOST} \
-                            "
-                            cd ${DEPLOY_PATH}
-
-                            echo 'Checking deployed files...'
-
-                            test -f server.js
-                            test -d .next
-
-                            echo 'Removing old PM2 process if it exists...'
-
-                            ${PM2_BIN} delete ${PM2_NAME} || true
-
-                            echo 'Starting new PM2 process...'
-
-                            ${PM2_BIN} start ecosystem.config.js --update-env
-
-                            echo 'Saving PM2 configuration...'
-
-                            ${PM2_BIN} save
-
-                            echo 'PM2 status:'
-
-                            ${PM2_BIN} status
-                            "
+                            "cd ${DEPLOY_PATH} && ${PM2_BIN} delete ${PM2_NAME} || true; cd ${DEPLOY_PATH} && ${PM2_BIN} start ecosystem.config.js --update-env && ${PM2_BIN} save && ${PM2_BIN} status"
 
                             echo "================================="
                             echo "Deployment completed"
