@@ -133,6 +133,9 @@ pipeline {
                         '};' \
                         > deploy-package/ecosystem.config.js
 
+                    echo "Removing .env from deploy-package (copied separately via scp)..."
+                    rm -f deploy-package/.env
+
                     echo "Deployment package prepared."
 
                     echo "Package contents:"
@@ -178,6 +181,12 @@ pipeline {
                             ssh -o StrictHostKeyChecking=no \
                                 ${STAGING_USER}@${STAGING_HOST} \
                                 "tar -C ${STAGING_APP_DIR} -xf -"
+
+                            echo "Ensuring .env is writable on server..."
+
+                            ssh -o StrictHostKeyChecking=no \
+                                ${STAGING_USER}@${STAGING_HOST} \
+                                "chmod 600 ${STAGING_APP_DIR}/.env 2>/dev/null || true"
 
                             echo "Copying staging environment file..."
 
