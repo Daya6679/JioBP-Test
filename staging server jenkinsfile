@@ -1,0 +1,350 @@
+```groovy
+def call(Map config) {
+    def FAILED_STAGE = "Unknown"
+    
+    pipeline {
+        agent any
+        tools { nodejs "nodejs-23" }
+
+        environment {
+            // Use config values or defaults
+            DEPLOY_PATH = "/home/ubuntu/app/${config.folderName}"
+            PM2_NAME    = "${config.pm2Name}"
+            PORT        = "${config.port}"
+            ENV_ID      = "${config.secretId}"
+            DB_TYPE     = "${config.dbType}" // 'postgres' or 'mongodb'
+            MODULES     = "${config.ismodules}"
+            IS_PRIVATE  = "${config.private_package}"
+            
+            // Global Paths
+            PM2_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2'
+            NPM_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/npm'
+            NPX_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/npx'
+            PNPM_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pnpm'
+        }
+
+        stages {
+            stage("Cleanup & Checkout") {
+                when {
+                    branch 'deployment'
+                }
+                steps {
+                    script { FAILED_STAGE = "Cleanup & Checkout" }
+                    deleteDir()
+                    checkout scm
+                }
+            }
+
+            stage('Sync to EC2') {
+                steps {
+                    script { FAILED_STAGE = "Sync" }
+                    
+                    withCredentials([file(credentialsId: "${ENV_ID}", variable: 'SECRET_ENV_FILE')]) {
+                        sh '''
+                            set -e
+                            rm -f .env || true
+                            cp "${SECRET_ENV_FILE}" .env
+                        '''
+                    }
+                }
+            }
+
+            stage('Build') {
+                steps {
+                    script { FAILED_STAGE = "Build" }
+
+                    script {
+                        // CRITICAL: You must use 'def' to define the variable in this scope
+                        def credentialsList = [file(credentialsId: "${ENV_ID}", variable: 'SECRET_ENV_FILE')]
+
+                        if (env.IS_PRIVATE == 'true') {
+                            credentialsList.add(string(credentialsId: 'github-npm-token', variable: 'GITHUB_TOKEN'))
+                        }
+
+                        // Wrap everything that needs these credentials inside this block
+                        withCredentials(credentialsList) {
+                            if (env.IS_PRIVATE == 'true') {
+                                sh '''
+                                    echo "Configuring .npmrc for GitHub Private Packages..."
+                                    echo "@biometrik-systems:registry=https://npm.pkg.github.com" > .npmrc
+                                    echo "//npm.pkg.github.com/:_authToken=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" >> .npmrc
+                                '''
+                            }
+
+                            sh '''
+                                set -e
+                                echo "Installing dependencies using NPM..."
+                                ${NPM_BIN} install
+                                rm -f .npmrc || true
+                            '''
+
+                            if (env.DB_TYPE == 'postgres') {
+                                sh '''
+                                    echo "Starting Prisma Workflow..."
+                                    ${NPX_BIN} prisma generate
+                                    
+                                    # Check if we need to baseline or just deploy
+                                    echo "Checking migration status..."
+        
+                                    if ${NPX_BIN} prisma migrate deploy; then
+                                        echo "Migrations applied successfully."
+                                    else
+                                        EXIT_CODE=$?
+                                        if [ $EXIT_CODE -eq 1 ]; then
+                                            echo "Detected existing schema without migration history (P3005). Baselining..."
+                                            
+                                            # We resolve the initial migration as applied to create the history table
+                                            # Replace '0_init' with your actual initial migration folder name if different
+                                            ${NPX_BIN} prisma migrate resolve --applied 0_init || echo "Baseline already exists or failed."
+                
+                                            echo "Retrying migration deploy..."
+                                            ${NPX_BIN} prisma migrate deploy
+                                        else
+                                            echo "Prisma migration failed with unexpected error code: $EXIT_CODE"
+                                            exit $EXIT_CODE
+                                        fi
+                                    fi
+                                '''
+                            }
+
+                            sh '''
+                                echo "Building Next.js standalone application..."
+                                ${NPM_BIN} run build
+                            '''
+                        }
+                    }
+                }
+            }
+
+            stage('Deploy') {
+                steps {
+                    script { FAILED_STAGE = "Deploy" }
+
+                    withCredentials([
+                        file(credentialsId: "${ENV_ID}", variable: 'SECRET_ENV_FILE'),
+                        file(credentialsId: 'staging-server-pem', variable: 'STAGING_SSH_KEY')
+                    ]) {
+
+                        sh '''
+                            set -e
+
+                            STAGING_SERVER="ubuntu@3.111.24.72"
+                            SSH_KEY="staging-server.pem"
+
+                            echo "=============================================="
+                            echo "Starting Staging EC2 Deployment"
+                            echo "=============================================="
+
+                            echo "Creating SSH key file..."
+                            cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
+                            chmod 600 "${SSH_KEY}"
+
+                            echo "Checking SSH connection to staging server..."
+                            ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" "echo 'SSH connection successful'"
+
+                            echo "Identifying project being deployed..."
+                            echo "Project folder: ${DEPLOY_PATH}"
+                            echo "Project name: ${config.folderName}"
+
+                            echo "Checking/creating project directory on staging server..."
+                            ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" "
+                                mkdir -p '${DEPLOY_PATH}'
+                            "
+
+                            echo "Cleaning current deployment directory while preserving required files..."
+
+                            ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" "
+                                find '${DEPLOY_PATH}' -mindepth 1 -maxdepth 1 \
+                                ! -name '.env' \
+                                ! -name 'ecosystem.config.js' \
+                                ! -name 'ecosystem.config.cjs' \
+                                -exec rm -rf {} +
+                            "
+
+                            echo "Removing .env from standalone build before transfer..."
+                            rm -f .next/standalone/.env
+
+                            echo "Copying standalone build to staging project directory..."
+
+                            tar -C .next/standalone -cf - . | \
+                            ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" \
+                            "tar -C '${DEPLOY_PATH}' -xf -"
+
+                            echo "Copying static files to staging server..."
+
+                            ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" \
+                            "mkdir -p '${DEPLOY_PATH}/.next'"
+
+                            if [ -d ".next/static" ]; then
+                                tar -C .next -cf - static | \
+                                ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" \
+                                "tar -C '${DEPLOY_PATH}/.next' -xf -"
+                            fi
+
+                            echo "Copying public folder to staging server..."
+
+                            if [ -d "public" ]; then
+                                tar -cf - public | \
+                                ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" \
+                                "tar -C '${DEPLOY_PATH}' -xf -"
+                            fi
+
+                            echo "Copying environment file to staging server..."
+
+                            scp -o StrictHostKeyChecking=no \
+                                -i "${SSH_KEY}" \
+                                "${SECRET_ENV_FILE}" \
+                                "${STAGING_SERVER}:${DEPLOY_PATH}/.env"
+
+                            echo "Setting ownership of deployment files..."
+
+                            ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" "
+                                sudo chown -R ubuntu:ubuntu '${DEPLOY_PATH}'
+                                sudo chown ubuntu:ubuntu '${DEPLOY_PATH}/.env'
+                            "
+
+                            echo "Cleaning temporary SSH key..."
+
+                            rm -f "${SSH_KEY}"
+
+                            echo "Files transferred successfully."
+                        '''
+
+                        script {
+                            if(env.MODULES == 'true'){
+                                sh '''
+                                    set -e
+
+                                    STAGING_SERVER="ubuntu@3.111.24.72"
+                                    SSH_KEY="staging-server.pem"
+
+                                    echo "Creating SSH key file..."
+                                    cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
+                                    chmod 600 "${SSH_KEY}"
+
+                                    echo "Copying ecosystem.config.js to staging server..."
+
+                                    scp -o StrictHostKeyChecking=no \
+                                        -i "${SSH_KEY}" \
+                                        ecosystem.config.js \
+                                        "${STAGING_SERVER}:${DEPLOY_PATH}/ecosystem.config.cjs"
+
+                                    echo "Moving to Deployment Path and Restarting PM2 process on staging server..."
+
+                                    ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" "
+                                        cd '${DEPLOY_PATH}'
+
+                                        ${PM2_BIN} restart ecosystem.config.cjs --update-env || \
+                                        ${PM2_BIN} start ecosystem.config.cjs --update-env
+
+                                        ${PM2_BIN} save
+
+                                        echo 'Deployment completed successfully'
+                                    "
+
+                                    rm -f "${SSH_KEY}"
+                                '''
+                            } else {
+                                sh '''
+                                    set -e
+
+                                    STAGING_SERVER="ubuntu@3.111.24.72"
+                                    SSH_KEY="staging-server.pem"
+
+                                    echo "Creating SSH key file..."
+                                    cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
+                                    chmod 600 "${SSH_KEY}"
+
+                                    echo "Moving to Deployment Path and Restarting PM2 process on staging server..."
+
+                                    ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" "
+                                        cd '${DEPLOY_PATH}'
+
+                                        ${PM2_BIN} restart ecosystem.config.js --update-env || \
+                                        ${PM2_BIN} start ecosystem.config.js --update-env
+
+                                        ${PM2_BIN} save
+
+                                        echo 'Deployment completed successfully'
+                                    "
+
+                                    rm -f "${SSH_KEY}"
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+
+            stage('Health Check') {
+                steps {
+                    script { FAILED_STAGE = "Health Check" }
+
+                    withCredentials([
+                        file(credentialsId: 'staging-server-pem', variable: 'STAGING_SSH_KEY')
+                    ]) {
+                        sh '''
+                            set -e
+
+                            STAGING_SERVER="ubuntu@3.111.24.72"
+                            SSH_KEY="staging-server.pem"
+
+                            echo "Checking application health on staging server..."
+
+                            cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
+                            chmod 600 "${SSH_KEY}"
+
+                            sleep 10
+
+                            ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" "${STAGING_SERVER}" "
+                                curl -v -f http://127.0.0.1:${PORT}/ || exit 1
+                            "
+
+                            rm -f "${SSH_KEY}"
+
+                            echo "Health check passed successfully."
+                        '''
+                    }
+                }
+            }
+        }
+
+        post {
+            success {
+                script {
+                    wrap([$class: 'BuildUser']) {
+                        sendBuildNotification("SUCCESS", FAILED_STAGE)
+                        withCredentials([string(credentialsId: 'x-api-key', variable: 'WORKSPACE_KEY')]) {
+                            def payload = """
+                            {
+                                "projectName": "${env.JOB_NAME}",
+                                "buildId": "${env.BUILD_NUMBER}",
+                                "commitHash": "${env.GIT_COMMIT}",
+                                "triggeredByEmail": "${env.BUILD_USER_EMAIL}",
+                                "buildUrl": "${env.BUILD_URL}",
+                                "environment": "Production"
+                            }
+                            """
+
+                            httpRequest contentType: 'APPLICATION_JSON',
+                                        httpMode: 'POST',
+                                        customHeaders: [[name: 'X-API-KEY', value: WORKSPACE_KEY]],
+                                        requestBody: payload,
+                                        url: "https://workspace.biometrik.org/api/deployments/ticket",
+                                        validResponseCodes: '200'
+                        }
+                    }
+                }
+            }
+
+            failure {
+                sendBuildNotification("FAILURE", FAILED_STAGE)
+            }
+
+            always {
+                deleteDir()
+            }
+        }
+    }
+}
+```
