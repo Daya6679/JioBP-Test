@@ -117,21 +117,21 @@ pipeline {
 
                     echo "Creating PM2 ecosystem configuration..."
 
-                    cat > deploy-package/ecosystem.config.js <<'EOF'
-                    module.exports = {
-                      apps: [{
-                        name: "jiobp-staging",
-                        script: "server.js",
-                        cwd: "/home/ubuntu/app/jiobp",
-                        exec_mode: "fork",
-                        instances: 1,
-                        env: {
-                          NODE_ENV: "production",
-                          PORT: 3000
-                        }
-                      }]
-                    };
-                    EOF
+                    printf '%s\n' \
+                        'module.exports = {' \
+                        '  apps: [{' \
+                        '    name: "jiobp-staging",' \
+                        '    script: "server.js",' \
+                        '    cwd: "/home/ubuntu/app/jiobp",' \
+                        '    exec_mode: "fork",' \
+                        '    instances: 1,' \
+                        '    env: {' \
+                        '      NODE_ENV: "production",' \
+                        '      PORT: 3000' \
+                        '    }' \
+                        '  }]' \
+                        '};' \
+                        > deploy-package/ecosystem.config.js
 
                     echo "Deployment package prepared."
 
