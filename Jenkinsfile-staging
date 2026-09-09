@@ -4,7 +4,7 @@ pipeline {
 
     environment {
         STAGING_HOST = '3.111.24.72'
-        STAGING_USER = 'deploy'
+        STAGING_USER = 'ubuntu'
         STAGING_APP_DIR = '/home/ubuntu/app/jiobp'
         PM2_NAME = 'jiobp-staging'
         APP_PORT = '3000'
@@ -148,45 +148,52 @@ pipeline {
                 echo 'Deploying JioBP to Staging'
                 echo '================================='
 
-                sshagent(credentials: ['deploy-server-ssh']) {
+                withCredentials([
+                    file(
+                        credentialsId: 'jiobp-staging-env',
+                        variable: 'ENV_FILE'
+                    ),
+                    file(
+                        credentialsId: 'staging-server-pem',
+                        variable: 'STAGING_SSH_KEY'
+                    )
+                ]) {
 
-                    withCredentials([
-                        file(
-                            credentialsId: 'jiobp-staging-env',
-                            variable: 'ENV_FILE'
-                        )
-                    ]) {
+                    sh '''
+                        set -e
 
-                        sh '''
-                            set -e
+                        SSH_KEY="staging-server.pem"
+                        cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
+                        chmod 600 "${SSH_KEY}"
 
-                            echo "Creating staging application directory..."
+                        echo "Creating staging application directory..."
 
-                            ssh -o StrictHostKeyChecking=yes \
-                                ${STAGING_USER}@${STAGING_HOST} \
-                                "mkdir -p ${STAGING_APP_DIR}"
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
+                            ${STAGING_USER}@${STAGING_HOST} \
+                            "mkdir -p ${STAGING_APP_DIR}"
 
-                            echo "Cleaning old application files..."
+                        echo "Cleaning old application files..."
 
-                            ssh -o StrictHostKeyChecking=yes \
-                                ${STAGING_USER}@${STAGING_HOST} \
-                                "rm -rf ${STAGING_APP_DIR}/*"
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
+                            ${STAGING_USER}@${STAGING_HOST} \
+                            "find ${STAGING_APP_DIR} -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +"
 
-                            echo "Copying deployment package..."
+                        echo "Copying deployment package..."
 
-                            scp -o StrictHostKeyChecking=yes \
-                                -r deploy-package/* \
-                                ${STAGING_USER}@${STAGING_HOST}:${STAGING_APP_DIR}/
+                        tar -C deploy-package -cf - . | \
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
+                            ${STAGING_USER}@${STAGING_HOST} \
+                            "tar -C ${STAGING_APP_DIR} -xf -"
 
-                            echo "Copying staging environment file..."
+                        echo "Copying staging environment file..."
 
-                            scp -o StrictHostKeyChecking=yes \
-                                "$ENV_FILE" \
-                                ${STAGING_USER}@${STAGING_HOST}:${STAGING_APP_DIR}/.env
+                        scp -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
+                            "$ENV_FILE" \
+                            ${STAGING_USER}@${STAGING_HOST}:${STAGING_APP_DIR}/.env
 
-                            echo "Deployment files copied successfully."
-                        '''
-                    }
+                        rm -f "${SSH_KEY}"
+                        echo "Deployment files copied successfully."
+                    '''
                 }
             }
         }
@@ -198,20 +205,29 @@ pipeline {
                 echo 'Starting JioBP with PM2'
                 echo '================================='
 
-                sshagent(credentials: ['deploy-server-ssh']) {
+                withCredentials([
+                    file(
+                        credentialsId: 'staging-server-pem',
+                        variable: 'STAGING_SSH_KEY'
+                    )
+                ]) {
 
                     sh '''
                         set -e
 
-                        ssh -o StrictHostKeyChecking=yes \
+                        SSH_KEY="staging-server.pem"
+                        cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
+                        chmod 600 "${SSH_KEY}"
+
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
                             ${STAGING_USER}@${STAGING_HOST} \
                             "
-                            export PATH=\\$HOME/.npm-global/bin:\\$PATH;
+                            export PATH=/home/ubuntu/.nvm/versions/node/v23.11.1/bin:\\$HOME/.npm-global/bin:\\$PATH;
 
                             cd ${STAGING_APP_DIR};
 
                             echo 'Checking PM2...';
-                            pm2 -v;
+                            pm2 -v || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 -v;
 
                             echo 'Checking application files...';
                             ls -la;
@@ -220,14 +236,16 @@ pipeline {
                             pm2 delete ${PM2_NAME} || true;
 
                             echo 'Starting JioBP...';
-                            pm2 start ecosystem.config.js;
+                            pm2 start ecosystem.config.js --update-env || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 start ecosystem.config.js --update-env;
 
                             echo 'Saving PM2 process list...';
-                            pm2 save;
+                            pm2 save || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 save;
 
                             echo 'PM2 status:';
-                            pm2 list;
+                            pm2 list || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 list;
                             "
+
+                        rm -f "${SSH_KEY}"
                     '''
                 }
             }
@@ -240,21 +258,30 @@ pipeline {
                 echo 'Verifying JioBP on Staging'
                 echo '================================='
 
-                sshagent(credentials: ['deploy-server-ssh']) {
+                withCredentials([
+                    file(
+                        credentialsId: 'staging-server-pem',
+                        variable: 'STAGING_SSH_KEY'
+                    )
+                ]) {
 
                     sh '''
                         set -e
 
-                        ssh -o StrictHostKeyChecking=yes \
+                        SSH_KEY="staging-server.pem"
+                        cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
+                        chmod 600 "${SSH_KEY}"
+
+                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
                             ${STAGING_USER}@${STAGING_HOST} \
                             "
-                            export PATH=\\$HOME/.npm-global/bin:\\$PATH;
+                            export PATH=/home/ubuntu/.nvm/versions/node/v23.11.1/bin:\\$HOME/.npm-global/bin:\\$PATH;
 
                             echo '=================================';
                             echo 'PM2 Status';
                             echo '=================================';
 
-                            pm2 list;
+                            pm2 list || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 list;
 
                             echo '=================================';
                             echo 'Checking port 3000';
@@ -268,6 +295,8 @@ pipeline {
 
                             curl -I http://127.0.0.1:3000 || true;
                             "
+
+                        rm -f "${SSH_KEY}"
                     '''
                 }
             }
