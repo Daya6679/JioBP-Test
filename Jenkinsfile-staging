@@ -206,29 +206,31 @@ pipeline {
 
                         ssh -o StrictHostKeyChecking=no \
                             ${STAGING_USER}@${STAGING_HOST} \
-                            "
-                            export PATH=/home/ubuntu/.nvm/versions/node/v23.11.1/bin:\\$HOME/.npm-global/bin:\\$PATH;
+                            "bash -l -c '
+                                set -e
+                                source \\$HOME/.nvm/nvm.sh 2>/dev/null || true
+                                export PATH=\\$HOME/.nvm/versions/node/\\$(ls \\$HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin:\\$HOME/.npm-global/bin:\\$PATH
 
-                            cd ${STAGING_APP_DIR};
+                                cd ${STAGING_APP_DIR}
 
-                            echo 'Checking PM2...';
-                            pm2 -v || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 -v;
+                                echo \"Checking PM2...\"
+                                pm2 -v
 
-                            echo 'Checking application files...';
-                            ls -la;
+                                echo \"Checking application files...\"
+                                ls -la
 
-                            echo 'Stopping existing application if running...';
-                            pm2 delete ${PM2_NAME} || true;
+                                echo \"Stopping existing application if running...\"
+                                pm2 delete ${PM2_NAME} || true
 
-                            echo 'Starting JioBP...';
-                            pm2 start ecosystem.config.js --update-env || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 start ecosystem.config.js --update-env;
+                                echo \"Starting JioBP...\"
+                                pm2 start ecosystem.config.js --update-env
 
-                            echo 'Saving PM2 process list...';
-                            pm2 save || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 save;
+                                echo \"Saving PM2 process list...\"
+                                pm2 save
 
-                            echo 'PM2 status:';
-                            pm2 list || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 list;
-                            "
+                                echo \"PM2 status:\"
+                                pm2 list
+                            '"
                     '''
                 }
             }
@@ -248,27 +250,29 @@ pipeline {
 
                         ssh -o StrictHostKeyChecking=no \
                             ${STAGING_USER}@${STAGING_HOST} \
-                            "
-                            export PATH=/home/ubuntu/.nvm/versions/node/v23.11.1/bin:\\$HOME/.npm-global/bin:\\$PATH;
+                            "bash -l -c '
+                                set -e
+                                source \\$HOME/.nvm/nvm.sh 2>/dev/null || true
+                                export PATH=\\$HOME/.nvm/versions/node/\\$(ls \\$HOME/.nvm/versions/node 2>/dev/null | tail -n 1)/bin:\\$HOME/.npm-global/bin:\\$PATH
 
-                            echo '=================================';
-                            echo 'PM2 Status';
-                            echo '=================================';
+                                echo \"=================================\"
+                                echo \"PM2 Status\"
+                                echo \"=================================\"
 
-                            pm2 list || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 list;
+                                pm2 list
 
-                            echo '=================================';
-                            echo 'Checking port 3000';
-                            echo '=================================';
+                                echo \"=================================\"
+                                echo \"Checking port 3000\"
+                                echo \"=================================\"
 
-                            ss -lnt | grep ':3000' || true;
+                                ss -lnt | grep \":3000\" || true
 
-                            echo '=================================';
-                            echo 'Checking application locally';
-                            echo '=================================';
+                                echo \"=================================\"
+                                echo \"Checking application locally\"
+                                echo \"=================================\"
 
-                            curl -I http://127.0.0.1:3000 || true;
-                            "
+                                curl -I http://127.0.0.1:3000 || true
+                            '"
                     '''
                 }
             }
