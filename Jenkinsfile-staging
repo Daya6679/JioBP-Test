@@ -100,14 +100,14 @@ pipeline {
                     rm -rf deploy-package
                     mkdir -p deploy-package
 
-                    echo "Copying standalone application..."
+                    echo "Copying standalone application (including hidden .next dir)..."
 
-                    cp -R .next/standalone/* deploy-package/
+                    cp -R .next/standalone/. deploy-package/
 
-                    echo "Copying static files..."
+                    echo "Copying static assets into .next/static/..."
 
                     mkdir -p deploy-package/.next/static
-                    cp -R .next/static/* deploy-package/.next/static/
+                    cp -R .next/static/. deploy-package/.next/static/
 
                     echo "Copying public directory if available..."
 
