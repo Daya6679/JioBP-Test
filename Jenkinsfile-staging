@@ -148,52 +148,46 @@ pipeline {
                 echo 'Deploying JioBP to Staging'
                 echo '================================='
 
-                withCredentials([
-                    file(
-                        credentialsId: 'jiobp-staging-env',
-                        variable: 'ENV_FILE'
-                    ),
-                    file(
-                        credentialsId: 'staging-server-pem',
-                        variable: 'STAGING_SSH_KEY'
-                    )
-                ]) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
-                    sh '''
-                        set -e
+                    withCredentials([
+                        file(
+                            credentialsId: 'jiobp-staging-env',
+                            variable: 'ENV_FILE'
+                        )
+                    ]) {
 
-                        SSH_KEY="staging-server.pem"
-                        cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
-                        chmod 600 "${SSH_KEY}"
+                        sh '''
+                            set -e
 
-                        echo "Creating staging application directory..."
+                            echo "Creating staging application directory..."
 
-                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
-                            ${STAGING_USER}@${STAGING_HOST} \
-                            "mkdir -p ${STAGING_APP_DIR}"
+                            ssh -o StrictHostKeyChecking=no \
+                                ${STAGING_USER}@${STAGING_HOST} \
+                                "mkdir -p ${STAGING_APP_DIR}"
 
-                        echo "Cleaning old application files..."
+                            echo "Cleaning old application files..."
 
-                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
-                            ${STAGING_USER}@${STAGING_HOST} \
-                            "find ${STAGING_APP_DIR} -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +"
+                            ssh -o StrictHostKeyChecking=no \
+                                ${STAGING_USER}@${STAGING_HOST} \
+                                "find ${STAGING_APP_DIR} -mindepth 1 -maxdepth 1 ! -name '.env' -exec rm -rf {} +"
 
-                        echo "Copying deployment package..."
+                            echo "Copying deployment package..."
 
-                        tar -C deploy-package -cf - . | \
-                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
-                            ${STAGING_USER}@${STAGING_HOST} \
-                            "tar -C ${STAGING_APP_DIR} -xf -"
+                            tar -C deploy-package -cf - . | \
+                            ssh -o StrictHostKeyChecking=no \
+                                ${STAGING_USER}@${STAGING_HOST} \
+                                "tar -C ${STAGING_APP_DIR} -xf -"
 
-                        echo "Copying staging environment file..."
+                            echo "Copying staging environment file..."
 
-                        scp -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
-                            "$ENV_FILE" \
-                            ${STAGING_USER}@${STAGING_HOST}:${STAGING_APP_DIR}/.env
+                            scp -o StrictHostKeyChecking=no \
+                                "$ENV_FILE" \
+                                ${STAGING_USER}@${STAGING_HOST}:${STAGING_APP_DIR}/.env
 
-                        rm -f "${SSH_KEY}"
-                        echo "Deployment files copied successfully."
-                    '''
+                            echo "Deployment files copied successfully."
+                        '''
+                    }
                 }
             }
         }
@@ -205,21 +199,12 @@ pipeline {
                 echo 'Starting JioBP with PM2'
                 echo '================================='
 
-                withCredentials([
-                    file(
-                        credentialsId: 'staging-server-pem',
-                        variable: 'STAGING_SSH_KEY'
-                    )
-                ]) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
                     sh '''
                         set -e
 
-                        SSH_KEY="staging-server.pem"
-                        cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
-                        chmod 600 "${SSH_KEY}"
-
-                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
+                        ssh -o StrictHostKeyChecking=no \
                             ${STAGING_USER}@${STAGING_HOST} \
                             "
                             export PATH=/home/ubuntu/.nvm/versions/node/v23.11.1/bin:\\$HOME/.npm-global/bin:\\$PATH;
@@ -244,8 +229,6 @@ pipeline {
                             echo 'PM2 status:';
                             pm2 list || /home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2 list;
                             "
-
-                        rm -f "${SSH_KEY}"
                     '''
                 }
             }
@@ -258,21 +241,12 @@ pipeline {
                 echo 'Verifying JioBP on Staging'
                 echo '================================='
 
-                withCredentials([
-                    file(
-                        credentialsId: 'staging-server-pem',
-                        variable: 'STAGING_SSH_KEY'
-                    )
-                ]) {
+                sshagent(credentials: ['staging-deploy-key']) {
 
                     sh '''
                         set -e
 
-                        SSH_KEY="staging-server.pem"
-                        cp "${STAGING_SSH_KEY}" "${SSH_KEY}"
-                        chmod 600 "${SSH_KEY}"
-
-                        ssh -o StrictHostKeyChecking=no -i "${SSH_KEY}" \
+                        ssh -o StrictHostKeyChecking=no \
                             ${STAGING_USER}@${STAGING_HOST} \
                             "
                             export PATH=/home/ubuntu/.nvm/versions/node/v23.11.1/bin:\\$HOME/.npm-global/bin:\\$PATH;
@@ -295,8 +269,6 @@ pipeline {
 
                             curl -I http://127.0.0.1:3000 || true;
                             "
-
-                        rm -f "${SSH_KEY}"
                     '''
                 }
             }
