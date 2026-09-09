@@ -148,7 +148,7 @@ pipeline {
                 echo 'Deploying JioBP to Staging'
                 echo '================================='
 
-                sshagent(credentials: ['staging-deploy-key']) {
+                sshagent(credentials: ['jiobp-staging-ssh']) {
 
                     withCredentials([
                         file(
@@ -199,7 +199,7 @@ pipeline {
                 echo 'Starting JioBP with PM2'
                 echo '================================='
 
-                sshagent(credentials: ['staging-deploy-key']) {
+                sshagent(credentials: ['jiobp-staging-ssh']) {
 
                     sh '''
                         set -e
@@ -241,7 +241,7 @@ pipeline {
                 echo 'Verifying JioBP on Staging'
                 echo '================================='
 
-                sshagent(credentials: ['staging-deploy-key']) {
+                sshagent(credentials: ['jiobp-staging-ssh']) {
 
                     sh '''
                         set -e
