@@ -1,10 +1,8 @@
 // api/transaction/route.ts
-import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import Transaction from "@/models/Transaction";
-import QRRequest from "@/models/QRRequest";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from 'next/server';
+import { connectDB } from '@/lib/mongodb';
+import Transaction from '@/models/Transaction';
+import QRRequest from '@/models/QRRequest';
 
 export async function POST(req: Request) {
   try {
@@ -17,8 +15,7 @@ export async function POST(req: Request) {
     if (!userId || !driverId || !vehicleId || !qrId || (!qty && !amount)) {
       return NextResponse.json(
         {
-          message:
-            "Missing required data: Driver, Vehicle, and Qty/Amount are needed.",
+          message: 'Missing required data: Driver, Vehicle, and Qty/Amount are needed.',
         },
         { status: 400 },
       );
@@ -27,13 +24,10 @@ export async function POST(req: Request) {
     // 2. CHECK IF QR IS ALREADY USED
     const qrRecord = await QRRequest.findById(qrId);
     if (!qrRecord) {
-      return NextResponse.json({ message: "Invalid QR Code" }, { status: 404 });
+      return NextResponse.json({ message: 'Invalid QR Code' }, { status: 404 });
     }
     if (qrRecord.isUsed) {
-      return NextResponse.json(
-        { message: "This QR Code has already been used" },
-        { status: 400 },
-      );
+      return NextResponse.json({ message: 'This QR Code has already been used' }, { status: 400 });
     }
 
     const newTransaction = await Transaction.create({
@@ -51,14 +45,15 @@ export async function POST(req: Request) {
 
     return NextResponse.json(
       {
-        message: "Transaction recorded successfully",
+        message: 'Transaction recorded successfully',
         transactionId: newTransaction._id,
       },
       { status: 201 },
     );
-  } catch (error: any) {
-    console.error("Transaction Error:", error.message);
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    console.error('Transaction Error:', message);
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
 
@@ -67,12 +62,12 @@ export async function GET(req: Request) {
     await connectDB();
 
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+    const userId = searchParams.get('userId');
 
     // 2. If no userId is provided, return an error (prevents seeing all data)
     if (!userId) {
       return NextResponse.json(
-        { message: "User ID is required to view transactions." },
+        { message: 'User ID is required to view transactions.' },
         { status: 400 },
       );
     }
@@ -80,14 +75,15 @@ export async function GET(req: Request) {
     // 3. Query the database for transactions where userId matches
     // NOTE: Ensure your Mongoose Model has a 'userId' field
     const transactions = await Transaction.find({ userId: userId })
-      .populate("driverId", "name") // Only pull the 'name' field from Driver
-      .populate("vehicleId", "vehicleNumber")
+      .populate('driverId', 'name') // Only pull the 'name' field from Driver
+      .populate('vehicleId', 'vehicleNumber')
       .sort({
         createdAt: -1,
       });
 
     return NextResponse.json(transactions, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb"; // Ensure you have a db connection utility
-import Vehicle from "@/models/Vehicle";
+import { NextResponse } from 'next/server';
+import { connectDB } from '@/lib/mongodb'; // Ensure you have a db connection utility
+import Vehicle from '@/models/Vehicle';
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import type { SessionUser } from '@/lib/auth';
 
 // GET: Fetch all vehicles
 export async function GET() {
@@ -12,17 +13,18 @@ export async function GET() {
 
     const session = await getServerSession(authOptions);
 
-    console.log("Current Session:", session);
+    console.log('Current Session:', session);
 
-    if (!session || !(session.user as any)?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session || !(session.user as SessionUser)?.id) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
     const vehicles = await Vehicle.find({
-      userId: (session.user as any).id,
+      userId: (session.user as SessionUser).id,
     }).sort({ createdAt: -1 });
     return NextResponse.json(vehicles, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
 
@@ -33,20 +35,17 @@ export async function POST(req: Request) {
 
     const session = await getServerSession(authOptions);
 
-    if (!session || !(session.user as any)?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session || !(session.user as SessionUser)?.id) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = (session.user as any).id;
+    const userId = (session.user as SessionUser).id;
 
     const body = await req.json();
 
     // Basic validation
     if (!body.vehicleNumber || !body.make || !body.model) {
-      return NextResponse.json(
-        { message: "Missing required fields" },
-        { status: 400 }
-      );
+      return NextResponse.json({ message: 'Missing required fields' }, { status: 400 });
     }
 
     const newVehicle = await Vehicle.create({
@@ -54,14 +53,12 @@ export async function POST(req: Request) {
       userId,
     });
     return NextResponse.json(newVehicle, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Handle duplicate vehicle number error
-    if (error.code === 11000) {
-      return NextResponse.json(
-        { message: "Vehicle Number already exists" },
-        { status: 400 }
-      );
+    const err = error as { code?: number; message?: string };
+    if (err.code === 11000) {
+      return NextResponse.json({ message: 'Vehicle Number already exists' }, { status: 400 });
     }
-    return NextResponse.json({ message: error.message }, { status: 500 });
+    return NextResponse.json({ message: err.message ?? 'Internal server error' }, { status: 500 });
   }
 }

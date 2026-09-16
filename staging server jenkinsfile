@@ -8,24 +8,29 @@ def call(Map config) {
 
         environment {
             // Use config values or defaults
-            DEPLOY_PATH = "/home/ubuntu/app/${config.folderName}"
-            PM2_NAME    = "${config.pm2Name}"
-            PORT        = "${config.port}"
-            ENV_ID      = "${config.secretId}"
-            DB_TYPE     = "${config.dbType}" // 'postgres' or 'mongodb'
-            MODULES     = "${config.ismodules}"
-            IS_PRIVATE  = "${config.private_package}"
-            
+            DEPLOY_PATH   = "/home/ubuntu/app/${config.folderName}"
+            PM2_NAME      = "${config.pm2Name}"
+            PORT          = "${config.port}"
+            ENV_ID        = "${config.secretId}"
+            DB_TYPE       = "${config.dbType}" // 'postgres' or 'mongodb'
+            MODULES       = "${config.ismodules}"
+            IS_PRIVATE    = "${config.private_package}"
+
+            // Staging Server
+            STAGING_HOST  = "${config.stagingHost}"
+            STAGING_USER  = "${config.stagingUser ?: 'ubuntu'}"
+            SSH_CRED_ID   = "${config.sshCredentialId ?: 'staging-server-pem'}"
+
             // Global Paths
-            PM2_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2'
-            NPM_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/npm'
-            NPX_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/npx'
+            PM2_BIN  = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pm2'
+            NPM_BIN  = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/npm'
+            NPX_BIN  = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/npx'
             PNPM_BIN = '/home/ubuntu/.nvm/versions/node/v23.11.1/bin/pnpm'
         }
 
         stages {
             stage("Cleanup & Checkout") {
-                when {
+                when { 
                     branch 'deployment'
                 }
                 steps {
@@ -122,13 +127,13 @@ def call(Map config) {
 
                     withCredentials([
                         file(credentialsId: "${ENV_ID}", variable: 'SECRET_ENV_FILE'),
-                        file(credentialsId: 'staging-server-pem', variable: 'STAGING_SSH_KEY')
+                        file(credentialsId: "${SSH_CRED_ID}", variable: 'STAGING_SSH_KEY')
                     ]) {
 
                         sh '''
                             set -e
 
-                            STAGING_SERVER="ubuntu@3.111.24.72"
+                            STAGING_SERVER="${STAGING_USER}@${STAGING_HOST}"
                             SSH_KEY="staging-server.pem"
 
                             echo "=============================================="
@@ -215,7 +220,7 @@ def call(Map config) {
                                 sh '''
                                     set -e
 
-                                    STAGING_SERVER="ubuntu@3.111.24.72"
+                                    STAGING_SERVER="${STAGING_USER}@${STAGING_HOST}"
                                     SSH_KEY="staging-server.pem"
 
                                     echo "Creating SSH key file..."
@@ -248,7 +253,7 @@ def call(Map config) {
                                 sh '''
                                     set -e
 
-                                    STAGING_SERVER="ubuntu@3.111.24.72"
+                                    STAGING_SERVER="${STAGING_USER}@${STAGING_HOST}"
                                     SSH_KEY="staging-server.pem"
 
                                     echo "Creating SSH key file..."
@@ -281,12 +286,12 @@ def call(Map config) {
                     script { FAILED_STAGE = "Health Check" }
 
                     withCredentials([
-                        file(credentialsId: 'staging-server-pem', variable: 'STAGING_SSH_KEY')
+                        file(credentialsId: "${SSH_CRED_ID}", variable: 'STAGING_SSH_KEY')
                     ]) {
                         sh '''
                             set -e
 
-                            STAGING_SERVER="ubuntu@3.111.24.72"
+                            STAGING_SERVER="${STAGING_USER}@${STAGING_HOST}"
                             SSH_KEY="staging-server.pem"
 
                             echo "Checking application health on staging server..."

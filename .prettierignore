@@ -1,0 +1,27 @@
+# macOS resource fork / AppleDouble artifacts (binary files, not real source)
+._*
+**/.DS_Store
+
+# Build outputs
+.next/
+out/
+build/
+standalone/
+
+# Dependencies
+node_modules/
+
+# Lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Generated files
+next-env.d.ts
+*.tsbuildinfo
+
+# Coverage
+coverage/
+
+# Environment
+.env*

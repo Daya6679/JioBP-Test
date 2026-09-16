@@ -1,4 +1,4 @@
-import TransactionDashboard from "./TransactionDashboard";
+import TransactionDashboard from './TransactionDashboard';
 
 export default function TransactionsPage() {
   return (

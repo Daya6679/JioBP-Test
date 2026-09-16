@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState } from 'react';
 import {
   Button,
   Table,
@@ -13,8 +13,8 @@ import {
   Tooltip,
   Modal,
   Input,
-} from "antd";
-import { useRouter } from "next/navigation";
+} from 'antd';
+import { useRouter } from 'next/navigation';
 import {
   EditOutlined,
   CalendarOutlined,
@@ -23,19 +23,31 @@ import {
   ExclamationCircleOutlined,
   PhoneOutlined,
   EnvironmentOutlined,
-} from "@ant-design/icons";
-import dayjs from "dayjs";
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { confirm } = Modal;
 const { Search } = Input;
 
+interface Driver {
+  _id: string;
+  name: string;
+  phone: string;
+  licenseNumber: string;
+  licenseValidity?: string;
+  address?: string;
+  isActive: boolean;
+  image?: string;
+  createdAt: string;
+}
+
 export default function DriversPage() {
-  const [drivers, setDrivers] = useState<any[]>([]);
-  const [filteredDrivers, setFilteredDrivers] = useState<any[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [filteredDrivers, setFilteredDrivers] = useState<Driver[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [selectedDriver, setSelectedDriver] = useState<any>(null);
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null);
 
   const router = useRouter();
   const [messageApi, contextHolder] = message.useMessage();
@@ -43,15 +55,15 @@ export default function DriversPage() {
   const fetchDrivers = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/drivers");
-      if (!res.ok) throw new Error("Failed to fetch");
+      const res = await fetch('/api/drivers');
+      if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       const list = Array.isArray(data) ? data : [];
       setDrivers(list);
       setFilteredDrivers(list);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      messageApi.error("Could not load drivers list");
+    } catch {
+      console.error('Fetch error');
+      messageApi.error('Could not load drivers list');
     } finally {
       setLoading(false);
     }
@@ -59,9 +71,10 @@ export default function DriversPage() {
 
   useEffect(() => {
     fetchDrivers();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openDriverModal = (record: any) => {
+  const openDriverModal = (record: Driver) => {
     setSelectedDriver(record);
     setViewModalOpen(true);
   };
@@ -69,34 +82,33 @@ export default function DriversPage() {
   const handleSearch = (value: string) => {
     const term = value.toLowerCase();
     const filtered = drivers.filter(
-      (driver: any) =>
-        driver.name.toLowerCase().includes(term) || driver.phone.includes(term),
+      (driver) => driver.name.toLowerCase().includes(term) || driver.phone.includes(term),
     );
     setFilteredDrivers(filtered);
   };
 
-  const showDeactivateConfirm = (record: any) => {
+  const showDeactivateConfirm = (record: Driver) => {
     confirm({
-      title: "Delete Driver?",
-      icon: <ExclamationCircleOutlined style={{ color: "#ff4d4f" }} />,
+      title: 'Delete Driver?',
+      icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
       content: `Are you sure you want to disable ${record.name}?`,
       centered: true,
-      okText: "Yes, Delete",
-      okType: "danger",
-      cancelText: "No",
+      okText: 'Yes, Delete',
+      okType: 'danger',
+      cancelText: 'No',
       onOk: async () => {
         try {
           const res = await fetch(`/api/drivers/${record._id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ isActive: false }),
           });
           if (res.ok) {
             messageApi.success(`${record.name} deleted successfully`);
             fetchDrivers();
           }
-        } catch (err) {
-          messageApi.error("Failed to update status");
+        } catch {
+          messageApi.error('Failed to update status');
         }
       },
     });
@@ -104,18 +116,14 @@ export default function DriversPage() {
 
   const columns = [
     {
-      title: "Photo",
-      dataIndex: "image",
-      key: "image",
+      title: 'Photo',
+      dataIndex: 'image',
+      key: 'image',
       width: 80,
       render: (image: string) => {
-        // const src =
-        //   image && !image.startsWith("data:")
-        //     ? `data:image/jpeg;base64,${image}`
-        //     : image;
         const src =
-          image && image.trim() !== ""
-            ? image.startsWith("data:")
+          image && image.trim() !== ''
+            ? image.startsWith('data:')
               ? image
               : `data:image/jpeg;base64,${image}`
             : null;
@@ -123,74 +131,65 @@ export default function DriversPage() {
       },
     },
     {
-      title: "Driver Name",
-      dataIndex: "name",
-      key: "name",
-      sorter: (a: any, b: any) => a.name.localeCompare(b.name),
-      render: (text: string, record: any) => (
-        <Text
-          className={
-            record.isActive ? "font-semibold" : "font-semibold text-gray-400"
-          }
-        >
+      title: 'Driver Name',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a: Driver, b: Driver) => a.name.localeCompare(b.name),
+      render: (text: string, record: Driver) => (
+        <Text className={record.isActive ? 'font-semibold' : 'font-semibold text-gray-400'}>
           {text}
         </Text>
       ),
     },
     {
-      title: "Phone Number",
-      dataIndex: "phone",
-      key: "phone",
+      title: 'Phone Number',
+      dataIndex: 'phone',
+      key: 'phone',
     },
     {
-      title: "License Details",
-      key: "license",
-      render: (_: any, record: any) => (
+      title: 'License Details',
+      key: 'license',
+      render: (_: unknown, record: Driver) => (
         <div className="text-xs">
           <div className="text-gray-400">No: {record.licenseNumber}</div>
           <div>
-            Expires:{" "}
-            {record.licenseValidity
-              ? dayjs(record.licenseValidity).format("YYYY-MM-DD")
-              : "N/A"}
+            Expires:{' '}
+            {record.licenseValidity ? dayjs(record.licenseValidity).format('YYYY-MM-DD') : 'N/A'}
           </div>
         </div>
       ),
     },
     {
-      title: "Address",
-      dataIndex: "address",
-      key: "address",
+      title: 'Address',
+      dataIndex: 'address',
+      key: 'address',
       ellipsis: true,
     },
     {
-      title: "Created On",
-      dataIndex: "createdAt",
-      key: "createdAt",
-      sorter: (a: any, b: any) =>
-        dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
-      defautlSortOrder: "descend" as const,
+      title: 'Created On',
+      dataIndex: 'createdAt',
+      key: 'createdAt',
+      sorter: (a: Driver, b: Driver) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+      defautlSortOrder: 'descend' as const,
       render: (date: string) => (
         <Space size="small" className="text-xs">
-          <CalendarOutlined style={{ color: "#8c8c8c" }} />
-          {dayjs(date).format("YYYY-MM-DD HH:mm")}
+          <CalendarOutlined style={{ color: '#8c8c8c' }} />
+          {dayjs(date).format('YYYY-MM-DD HH:mm')}
         </Space>
       ),
     },
     {
-      title: "Status",
-      dataIndex: "isActive",
-      key: "isActive",
+      title: 'Status',
+      dataIndex: 'isActive',
+      key: 'isActive',
       render: (active: boolean) => (
-        <Tag color={active ? "green" : "red"}>
-          {active ? "ACTIVE" : "INACTIVE"}
-        </Tag>
+        <Tag color={active ? 'green' : 'red'}>{active ? 'ACTIVE' : 'INACTIVE'}</Tag>
       ),
     },
     {
-      title: "Action",
-      key: "action",
-      render: (_: any, record: any) => (
+      title: 'Action',
+      key: 'action',
+      render: (_: unknown, record: Driver) => (
         <Space size="middle">
           <Tooltip title="Edit">
             <Button
@@ -221,7 +220,7 @@ export default function DriversPage() {
   ];
 
   return (
-    <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
+    <Card className="shadow-sm border-0" style={{ borderRadius: '12px' }}>
       {contextHolder}
       {/* Responsive Header */}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
@@ -242,7 +241,7 @@ export default function DriversPage() {
           <Button
             type="primary"
             className="rounded-md w-full sm:w-auto"
-            onClick={() => router.push("/dashboard/drivers/add")}
+            onClick={() => router.push('/dashboard/drivers/add')}
           >
             + Add New Driver
           </Button>
@@ -251,7 +250,7 @@ export default function DriversPage() {
 
       {/* --- MOBILE VIEW: Card List --- */}
       <div className="block md:hidden space-y-4">
-        {filteredDrivers.map((driver: any) => (
+        {filteredDrivers.map((driver) => (
           <div
             key={driver._id}
             className="p-4 border border-gray-100 rounded-lg bg-white shadow-sm"
@@ -261,10 +260,9 @@ export default function DriversPage() {
               <div className="flex gap-3">
                 <Avatar
                   size={50}
-                  // src={driver.image && !driver.image.startsWith('data:') ? `data:image/jpeg;base64,${driver.image}` : driver.image}
                   src={
                     driver?.image
-                      ? driver.image.startsWith("data:")
+                      ? driver.image.startsWith('data:')
                         ? driver.image
                         : `data:image/jpeg;base64,${driver.image}`
                       : null
@@ -272,9 +270,7 @@ export default function DriversPage() {
                   icon={<UserOutlined />}
                 />
                 <div>
-                  <div
-                    className={`font-bold ${driver.isActive ? "" : "text-gray-400"}`}
-                  >
+                  <div className={`font-bold ${driver.isActive ? '' : 'text-gray-400'}`}>
                     {driver.name}
                   </div>
                   <div className="text-xs text-gray-500">
@@ -282,8 +278,8 @@ export default function DriversPage() {
                   </div>
                 </div>
               </div>
-              <Tag color={driver.isActive ? "green" : "red"}>
-                {driver.isActive ? "ACTIVE" : "INACTIVE"}
+              <Tag color={driver.isActive ? 'green' : 'red'}>
+                {driver.isActive ? 'ACTIVE' : 'INACTIVE'}
               </Tag>
             </div>
 
@@ -300,23 +296,21 @@ export default function DriversPage() {
                 </Text>
                 <Text>
                   {driver.licenseValidity
-                    ? dayjs(driver.licenseValidity).format("YYYY-MM-DD")
-                    : "N/A"}
+                    ? dayjs(driver.licenseValidity).format('YYYY-MM-DD')
+                    : 'N/A'}
                 </Text>
               </div>
               <div className="col-span-2">
                 <Text type="secondary" className="block text-[10px] uppercase">
                   <EnvironmentOutlined /> Address
                 </Text>
-                <Text ellipsis>{driver.address || "N/A"}</Text>
+                <Text ellipsis>{driver.address || 'N/A'}</Text>
               </div>
               <div className="col-span-2">
                 <Text type="secondary" className="block text-[10px] uppercase">
                   <CalendarOutlined /> Created On
                 </Text>
-                <Text>
-                  {dayjs(driver.createdAt).format("YYYY-MM-DD HH:mm")}
-                </Text>
+                <Text>{dayjs(driver.createdAt).format('YYYY-MM-DD HH:mm')}</Text>
               </div>
             </div>
 
@@ -368,14 +362,13 @@ export default function DriversPage() {
         centered
       >
         {selectedDriver && (
-          <Space orientation="vertical" size={24} style={{ width: "100%" }}>
+          <Space orientation="vertical" size={24} style={{ width: '100%' }}>
             <Space align="center" size={20}>
               <Avatar
                 size={96}
                 icon={<UserOutlined />}
                 src={
-                  selectedDriver.image &&
-                  !selectedDriver.image.startsWith("data:")
+                  selectedDriver.image && !selectedDriver.image.startsWith('data:')
                     ? `data:image/jpeg;base64,${selectedDriver.image}`
                     : selectedDriver.image
                 }
@@ -384,18 +377,15 @@ export default function DriversPage() {
                 <Title level={4} style={{ margin: 0 }}>
                   {selectedDriver.name}
                 </Title>
-                <Tag
-                  color={selectedDriver.isActive ? "green" : "red"}
-                  style={{ marginTop: 6 }}
-                >
-                  {selectedDriver.isActive ? "ACTIVE" : "INACTIVE"}
+                <Tag color={selectedDriver.isActive ? 'green' : 'red'} style={{ marginTop: 6 }}>
+                  {selectedDriver.isActive ? 'ACTIVE' : 'INACTIVE'}
                 </Tag>
               </div>
             </Space>
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
                 gap: 16,
               }}
             >
@@ -409,9 +399,7 @@ export default function DriversPage() {
                 <Text type="secondary" className="text-xs">
                   License Number
                 </Text>
-                <div className="font-medium">
-                  {selectedDriver.licenseNumber || "N/A"}
-                </div>
+                <div className="font-medium">{selectedDriver.licenseNumber || 'N/A'}</div>
               </div>
               <div className="col-span-1">
                 <Text type="secondary" className="text-xs">
@@ -419,8 +407,8 @@ export default function DriversPage() {
                 </Text>
                 <div className="font-medium">
                   {selectedDriver.licenseValidity
-                    ? dayjs(selectedDriver.licenseValidity).format("YYYY-MM-DD")
-                    : "N/A"}
+                    ? dayjs(selectedDriver.licenseValidity).format('YYYY-MM-DD')
+                    : 'N/A'}
                 </div>
               </div>
               <div className="col-span-1">
@@ -428,16 +416,14 @@ export default function DriversPage() {
                   Created On
                 </Text>
                 <div className="font-medium">
-                  {dayjs(selectedDriver.createdAt).format("YYYY-MM-DD HH:mm")}
+                  {dayjs(selectedDriver.createdAt).format('YYYY-MM-DD HH:mm')}
                 </div>
               </div>
               <div className="col-span-2">
                 <Text type="secondary" className="text-xs">
                   Address
                 </Text>
-                <div className="font-medium">
-                  {selectedDriver.address || "N/A"}
-                </div>
+                <div className="font-medium">{selectedDriver.address || 'N/A'}</div>
               </div>
             </div>
           </Space>

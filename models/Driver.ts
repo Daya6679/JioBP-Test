@@ -1,5 +1,4 @@
-import mongoose from "mongoose";
-import { unique } from "next/dist/build/utils";
+import mongoose from 'mongoose';
 
 const DriverSchema = new mongoose.Schema(
   {
@@ -12,11 +11,11 @@ const DriverSchema = new mongoose.Schema(
     image: { type: String },
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "User", // Assuming your User model is named "User"
+      ref: 'User', // Assuming your User model is named "User"
       required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export default mongoose.models.Driver || mongoose.model("Driver", DriverSchema);
+export default mongoose.models.Driver || mongoose.model('Driver', DriverSchema);

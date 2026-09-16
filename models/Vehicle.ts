@@ -1,4 +1,4 @@
-import mongoose from "mongoose";
+import mongoose from 'mongoose';
 
 const VehicleSchema = new mongoose.Schema(
   {
@@ -8,14 +8,13 @@ const VehicleSchema = new mongoose.Schema(
     vehicleNumber: { type: String, required: true, unique: true },
     isActive: { type: Boolean, default: true },
     nickname: { type: String },
-    userId: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: "User", // Assuming your User model is named "User"
-      required: true 
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User', // Assuming your User model is named "User"
+      required: true,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
-export default mongoose.models.Vehicle ||
-  mongoose.model("Vehicle", VehicleSchema);
+export default mongoose.models.Vehicle || mongoose.model('Vehicle', VehicleSchema);

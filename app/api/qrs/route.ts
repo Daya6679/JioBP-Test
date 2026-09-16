@@ -1,9 +1,10 @@
-import { NextResponse } from "next/server";
-import { connectDB } from "@/lib/mongodb";
-import QRRequest from "@/models/QRRequest";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth";
-import Driver from "@/models/Driver";
+import { NextResponse } from 'next/server';
+import { connectDB } from '@/lib/mongodb';
+import QRRequest from '@/models/QRRequest';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import type { SessionUser } from '@/lib/auth';
+import Driver from '@/models/Driver';
 
 // GET: Fetch user-specific QR requests
 export async function GET() {
@@ -11,17 +12,18 @@ export async function GET() {
     await connectDB();
     const session = await getServerSession(authOptions);
 
-    if (!session || !(session.user as any)?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session || !(session.user as SessionUser)?.id) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const qrs = await QRRequest.find({ userId: (session.user as any).id })
-      .populate("driverId", "name") // Fetch only the name field from Driver
-      .populate("vehicleId", "vehicleNumber") // Fetch only vehicleNumber from Vehicle
+    const qrs = await QRRequest.find({ userId: (session.user as SessionUser).id })
+      .populate('driverId', 'name') // Fetch only the name field from Driver
+      .populate('vehicleId', 'vehicleNumber') // Fetch only vehicleNumber from Vehicle
       .sort({ createdAt: -1 });
     return NextResponse.json(qrs, { status: 200 });
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
 
@@ -31,8 +33,8 @@ export async function POST(req: Request) {
     await connectDB();
     const session = await getServerSession(authOptions);
 
-    if (!session || !(session.user as any)?.id) {
-      return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
+    if (!session || !(session.user as SessionUser)?.id) {
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
@@ -42,27 +44,20 @@ export async function POST(req: Request) {
     const driver = await Driver.findById(driverId);
 
     if (!driver) {
-      return NextResponse.json(
-        { message: "Driver not found" },
-        { status: 404 },
-      );
+      return NextResponse.json({ message: 'Driver not found' }, { status: 404 });
     }
 
     const today = new Date();
-    const expiryDate = driver.licenseExpiry
-      ? new Date(driver.licenseExpiry)
-      : null;
+    const expiryDate = driver.licenseExpiry ? new Date(driver.licenseExpiry) : null;
 
     // Check for expiration or an "Invalid/Suspended" status string
     const isExpired = expiryDate && expiryDate < today;
-    const isStatusInvalid = ["Expired", "Suspended", "Inactive"].includes(
-      driver.licenseStatus,
-    );
+    const isStatusInvalid = ['Expired', 'Suspended', 'Inactive'].includes(driver.licenseStatus);
 
     if (isExpired || isStatusInvalid) {
       return NextResponse.json(
         {
-          message: "Cannot generate QR: Driver license is expired or invalid.",
+          message: 'Cannot generate QR: Driver license is expired or invalid.',
         },
         { status: 400 },
       );
@@ -71,11 +66,12 @@ export async function POST(req: Request) {
     // Create record with hidden userId from session
     const newQrRequest = await QRRequest.create({
       ...body,
-      userId: (session.user as any).id,
+      userId: (session.user as SessionUser).id,
     });
 
     return NextResponse.json(newQrRequest, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ message: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    return NextResponse.json({ message }, { status: 500 });
   }
 }

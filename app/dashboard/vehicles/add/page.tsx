@@ -1,33 +1,27 @@
-"use client";
+'use client';
 
-import { Suspense, useEffect, useState } from "react";
-import {
-  Form,
-  Input,
-  Button,
-  Card,
-  Select,
-  Switch,
-  Typography,
-  Space,
-  message,
-  Breadcrumb,
-} from "antd";
-import { useRouter, useSearchParams } from "next/navigation";
-import {
-  CarOutlined,
-  ArrowLeftOutlined,
-  SaveOutlined,
-} from "@ant-design/icons";
+import { Suspense, useEffect, useState } from 'react';
+import { Form, Input, Button, Card, Select, Typography, Space, message, Breadcrumb } from 'antd';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { CarOutlined, ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
 
-const { Title, Text } = Typography;
+const { Title } = Typography;
 const { Option } = Select;
 
+interface VehicleFormValues {
+  make: string;
+  model: string;
+  vehicleNumber: string;
+  fuelType: string;
+  nickname?: string;
+  isActive?: boolean;
+}
+
 function VehicleFormContent() {
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<VehicleFormValues>();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const vehicleId = searchParams.get("id"); // If ID exists, we are in Edit mode
+  const vehicleId = searchParams.get('id'); // If ID exists, we are in Edit mode
   const [loading, setLoading] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(true);
 
@@ -42,12 +36,10 @@ function VehicleFormContent() {
           if (res.ok) {
             const data = await res.json();
             form.setFieldsValue(data);
-            setCurrentStatus(
-              data.isActive !== undefined ? data.isActive : true,
-            );
+            setCurrentStatus(data.isActive !== undefined ? data.isActive : true);
           }
-        } catch (err) {
-          messageApi.error("Failed to load vehicle details");
+        } catch {
+          messageApi.error('Failed to load vehicle details');
         }
       };
       fetchVehicle();
@@ -56,11 +48,11 @@ function VehicleFormContent() {
     }
   }, [vehicleId, form, messageApi]);
 
-  const onFinish = async (values: any) => {
+  const onFinish = async (values: VehicleFormValues) => {
     setLoading(true);
     try {
-      const url = vehicleId ? `/api/vehicles/${vehicleId}` : "/api/vehicles";
-      const method = vehicleId ? "PUT" : "POST";
+      const url = vehicleId ? `/api/vehicles/${vehicleId}` : '/api/vehicles';
+      const method = vehicleId ? 'PUT' : 'POST';
 
       const finalSubmission = {
         ...values,
@@ -69,24 +61,23 @@ function VehicleFormContent() {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(finalSubmission),
       });
 
       if (res.ok) {
-        messageApi.success(
-          `Vehicle ${vehicleId ? "updated" : "added"} successfully!`,
-        );
+        messageApi.success(`Vehicle ${vehicleId ? 'updated' : 'added'} successfully!`);
         setTimeout(() => {
-          router.push("/dashboard/vehicles");
+          router.push('/dashboard/vehicles');
           router.refresh(); // Refresh server data
         }, 800);
       } else {
-        const error = await res.json();
-        throw new Error(error.message || "Operation failed");
+        const errorData = await res.json();
+        throw new Error(errorData.message || 'Operation failed');
       }
-    } catch (err: any) {
-      messageApi.error(err.message);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Operation failed';
+      messageApi.error(message);
     } finally {
       setLoading(false);
     }
@@ -101,13 +92,13 @@ function VehicleFormContent() {
           <Space orientation="vertical" size={0}>
             <Breadcrumb
               items={[
-                { title: "Dashboard" },
-                { title: "Vehicles", href: "/dashboard/vehicles" },
-                { title: vehicleId ? "Edit" : "Add New" },
+                { title: 'Dashboard' },
+                { title: 'Vehicles', href: '/dashboard/vehicles' },
+                { title: vehicleId ? 'Edit' : 'Add New' },
               ]}
             />
-            <Title level={3} style={{ margin: "8px 0" }}>
-              {vehicleId ? "Edit Vehicle" : "Register New Vehicle"}
+            <Title level={3} style={{ margin: '8px 0' }}>
+              {vehicleId ? 'Edit Vehicle' : 'Register New Vehicle'}
             </Title>
           </Space>
           <Button icon={<ArrowLeftOutlined />} onClick={() => router.back()}>
@@ -115,7 +106,7 @@ function VehicleFormContent() {
           </Button>
         </div>
 
-        <Card className="shadow-md border-0" style={{ borderRadius: "12px" }}>
+        <Card className="shadow-md border-0" style={{ borderRadius: '12px' }}>
           <Form
             form={form}
             layout="vertical"
@@ -130,7 +121,7 @@ function VehicleFormContent() {
                 rules={[
                   {
                     required: true,
-                    message: "Enter vehicle make (e.g. Toyota)",
+                    message: 'Enter vehicle make (e.g. Toyota)',
                   },
                 ]}
               >
@@ -144,7 +135,7 @@ function VehicleFormContent() {
               <Form.Item
                 label="Model"
                 name="model"
-                rules={[{ required: true, message: "Enter vehicle model" }]}
+                rules={[{ required: true, message: 'Enter vehicle model' }]}
               >
                 <Input placeholder="e.g. Camry" size="large" />
               </Form.Item>
@@ -152,9 +143,7 @@ function VehicleFormContent() {
               <Form.Item
                 label="Vehicle Number"
                 name="vehicleNumber"
-                rules={[
-                  { required: true, message: "Enter registration number" },
-                ]}
+                rules={[{ required: true, message: 'Enter registration number' }]}
               >
                 <Input placeholder="e.g. ABC-1234" size="large" />
               </Form.Item>
@@ -162,7 +151,7 @@ function VehicleFormContent() {
               <Form.Item
                 label="Fuel Type"
                 name="fuelType"
-                rules={[{ required: true, message: "Select fuel type" }]}
+                rules={[{ required: true, message: 'Select fuel type' }]}
               >
                 <Select placeholder="Select Type" size="large">
                   <Option value="Petrol">Petrol</Option>
@@ -176,10 +165,7 @@ function VehicleFormContent() {
             </div>
 
             <div className="border-t pt-6 mt-4 flex justify-end gap-3">
-              <Button
-                size="large"
-                onClick={() => router.push("/dashboard/vehicles")}
-              >
+              <Button size="large" onClick={() => router.push('/dashboard/vehicles')}>
                 Cancel
               </Button>
               <Button
@@ -189,7 +175,7 @@ function VehicleFormContent() {
                 loading={loading}
                 icon={<SaveOutlined />}
               >
-                {vehicleId ? "Update Vehicle" : "Save Vehicle"}
+                {vehicleId ? 'Update Vehicle' : 'Save Vehicle'}
               </Button>
             </div>
           </Form>

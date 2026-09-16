@@ -1,20 +1,9 @@
-"use client";
+'use client';
 
-import { Suspense, useEffect, useState } from "react";
-import {
-  Button,
-  Table,
-  Tag,
-  Card,
-  Typography,
-  Space,
-  message,
-  Tooltip,
-  Modal,
-  Input,
-} from "antd";
+import { Suspense, useEffect, useState } from 'react';
+import { Button, Table, Tag, Card, Typography, Space, message, Tooltip, Modal, Input } from 'antd';
 // 1. Import useSearchParams to detect Edit mode
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   EditOutlined,
   CarOutlined,
@@ -23,38 +12,50 @@ import {
   InfoCircleOutlined,
   CalendarOutlined,
   FilterOutlined,
-} from "@ant-design/icons";
-import dayjs from "dayjs";
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 const { confirm } = Modal;
 const { Search } = Input;
 
-   function VehicleListContent() {
-  const [vehicles, setVehicles] = useState<any[]>([]);
-  const [filteredVehicles, setFilteredVehicles] = useState<any[]>([]);
+interface Vehicle {
+  _id: string;
+  make: string;
+  model: string;
+  vehicleNumber: string;
+  fuelType?: string;
+  nickname?: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+function VehicleListContent() {
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [filteredVehicles, setFilteredVehicles] = useState<Vehicle[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewModalOpen, setViewModalOpen] = useState(false);
-  const [selectedVehicle, setSelectedVehicle] = useState<any>(null);
+  const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null);
 
   const router = useRouter();
   // 2. Initialize searchParams to check for ?id=
   const searchParams = useSearchParams();
   const [messageApi, contextHolder] = message.useMessage();
-  const isEditing = searchParams.has("id");
+  // searchParams is used only to detect edit mode context — consumed in child page
+  void searchParams;
 
   const fetchVehicles = async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/vehicles");
-      if (!res.ok) throw new Error("Failed to fetch");
+      const res = await fetch('/api/vehicles');
+      if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       const list = Array.isArray(data) ? data : [];
       setVehicles(list);
       setFilteredVehicles(list);
-    } catch (err) {
-      console.error("Fetch error:", err);
-      messageApi.error("Could not load vehicles list");
+    } catch {
+      console.error('Fetch error');
+      messageApi.error('Could not load vehicles list');
     } finally {
       setLoading(false);
     }
@@ -62,9 +63,10 @@ const { Search } = Input;
 
   useEffect(() => {
     fetchVehicles();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const openVehicleModal = (record: any) => {
+  const openVehicleModal = (record: Vehicle) => {
     setSelectedVehicle(record);
     setViewModalOpen(true);
   };
@@ -72,7 +74,7 @@ const { Search } = Input;
   const handleSearch = (value: string) => {
     const term = value.toLowerCase();
     const filtered = vehicles.filter(
-      (v: any) =>
+      (v) =>
         v.make?.toLowerCase().includes(term) ||
         v.model?.toLowerCase().includes(term) ||
         v.vehicleNumber?.toLowerCase().includes(term) ||
@@ -81,28 +83,28 @@ const { Search } = Input;
     setFilteredVehicles(filtered);
   };
 
-  const showDeactivateConfirm = (record: any) => {
+  const showDeactivateConfirm = (record: Vehicle) => {
     confirm({
-      title: "Delete Vehicle?",
-      icon: <ExclamationCircleOutlined style={{ color: "#ff4d4f" }} />,
+      title: 'Delete Vehicle?',
+      icon: <ExclamationCircleOutlined style={{ color: '#ff4d4f' }} />,
       content: `Are you sure you want to disable ${record.vehicleNumber}?`,
       centered: true,
-      okText: "Yes, Delete",
-      okType: "danger",
-      cancelText: "No",
+      okText: 'Yes, Delete',
+      okType: 'danger',
+      cancelText: 'No',
       onOk: async () => {
         try {
           const res = await fetch(`/api/vehicles/${record._id}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ isActive: false }),
           });
           if (res.ok) {
             messageApi.success(`Vehicle deleted successfully`);
             fetchVehicles();
           }
-        } catch (err) {
-          messageApi.error("Error connecting to server");
+        } catch {
+          messageApi.error('Error connecting to server');
         }
       },
     });
@@ -110,13 +112,11 @@ const { Search } = Input;
 
   const columns = [
     {
-      title: "Make & Model",
-      key: "vehicleInfo",
-      render: (record: any) => (
+      title: 'Make & Model',
+      key: 'vehicleInfo',
+      render: (record: Vehicle) => (
         <Space>
-          <CarOutlined
-            style={{ color: record.isActive ? "#1890ff" : "#bfbfbf" }}
-          />
+          <CarOutlined style={{ color: record.isActive ? '#1890ff' : '#bfbfbf' }} />
           <div>
             <div className="font-semibold">
               {record.make} {record.model}
@@ -127,40 +127,35 @@ const { Search } = Input;
       ),
     },
     {
-      title: "Vehicle No.",
-      dataIndex: "vehicleNumber",
+      title: 'Vehicle No.',
+      dataIndex: 'vehicleNumber',
       render: (text: string) => <Tag color="blue">{text}</Tag>,
     },
     {
-      title: "Fuel Type",
-      dataIndex: "fuelType",
-      render: (type: string) => (
-        <span className="capitalize">{type || "N/A"}</span>
-      ),
+      title: 'Fuel Type',
+      dataIndex: 'fuelType',
+      render: (type: string) => <span className="capitalize">{type || 'N/A'}</span>,
     },
     {
-      title: "Created On",
-      dataIndex: "createdAt",
-      sorter: (a: any, b: any) =>
-        dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
-      defaultSortOrder: "descend" as const,
-      render: (date: string) => <span>{dayjs(date).format("YYYY-MM-DD")}</span>,
+      title: 'Created On',
+      dataIndex: 'createdAt',
+      sorter: (a: Vehicle, b: Vehicle) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+      defaultSortOrder: 'descend' as const,
+      render: (date: string) => <span>{dayjs(date).format('YYYY-MM-DD')}</span>,
     },
     {
-      title: "Status",
-      dataIndex: "isActive",
-      key: "isActive",
+      title: 'Status',
+      dataIndex: 'isActive',
+      key: 'isActive',
       render: (isActive: boolean) => (
-        <Tag color={isActive ? "success" : "error"}>
-          {isActive ? "ACTIVE" : "INACTIVE"}
-        </Tag>
+        <Tag color={isActive ? 'success' : 'error'}>{isActive ? 'ACTIVE' : 'INACTIVE'}</Tag>
       ),
     },
     {
-      title: "Action",
-      key: "action",
+      title: 'Action',
+      key: 'action',
       width: 140,
-      render: (_: any, record: any) => (
+      render: (_: unknown, record: Vehicle) => (
         <Space size="small">
           <Tooltip title="View Details">
             <span>
@@ -210,7 +205,7 @@ const { Search } = Input;
   ];
 
   return (
-    <Card className="shadow-sm border-0" style={{ borderRadius: "12px" }}>
+    <Card className="shadow-sm border-0" style={{ borderRadius: '12px' }}>
       {contextHolder}
       <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-6">
         <div>
@@ -229,7 +224,7 @@ const { Search } = Input;
           <Button
             type="primary"
             icon={<CarOutlined />}
-            onClick={() => router.push("/dashboard/vehicles/add")}
+            onClick={() => router.push('/dashboard/vehicles/add')}
           >
             Add New Vehicle
           </Button>
@@ -238,7 +233,7 @@ const { Search } = Input;
 
       {/* MOBILE VIEW */}
       <div className="block md:hidden space-y-4">
-        {filteredVehicles.map((vehicle: any) => (
+        {filteredVehicles.map((vehicle) => (
           <div
             key={vehicle._id}
             className="p-4 border border-gray-100 rounded-lg bg-white shadow-sm"
@@ -247,15 +242,13 @@ const { Search } = Input;
             <div className="flex justify-between items-start mb-4">
               <div className="flex gap-3">
                 <div className="p-2 bg-blue-50 rounded-lg h-fit">
-                  <CarOutlined style={{ color: "#1890ff", fontSize: 20 }} />
+                  <CarOutlined style={{ color: '#1890ff', fontSize: 20 }} />
                 </div>
                 <div>
                   <div className="font-bold text-gray-800 leading-tight">
                     {vehicle.make} {vehicle.model}
                   </div>
-                  <div className="text-xs text-gray-400">
-                    {vehicle.nickname || "No Nickname"}
-                  </div>
+                  <div className="text-xs text-gray-400">{vehicle.nickname || 'No Nickname'}</div>
                 </div>
               </div>
             </div>
@@ -274,10 +267,8 @@ const { Search } = Input;
                   Fuel Type
                 </Text>
                 <Space size={4}>
-                  <FilterOutlined className="text-gray-400 text-xs" />{" "}
-                  <span className="capitalize">
-                    {vehicle.fuelType || "N/A"}
-                  </span>
+                  <FilterOutlined className="text-gray-400 text-xs" />{' '}
+                  <span className="capitalize">{vehicle.fuelType || 'N/A'}</span>
                 </Space>
               </div>
               <div className="col-span-2">
@@ -285,10 +276,8 @@ const { Search } = Input;
                   Created On
                 </Text>
                 <Space size={4}>
-                  <CalendarOutlined className="text-gray-400 text-xs" />{" "}
-                  <span>
-                    {dayjs(vehicle.createdAt).format("MMMM DD, YYYY")}
-                  </span>
+                  <CalendarOutlined className="text-gray-400 text-xs" />{' '}
+                  <span>{dayjs(vehicle.createdAt).format('MMMM DD, YYYY')}</span>
                 </Space>
               </div>
             </div>
@@ -356,15 +345,13 @@ const { Search } = Input;
           <Space orientation="vertical" className="w-full" size={16}>
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-50 rounded-full">
-                <CarOutlined style={{ fontSize: 24, color: "#1890ff" }} />
+                <CarOutlined style={{ fontSize: 24, color: '#1890ff' }} />
               </div>
               <div>
                 <Title level={5} style={{ margin: 0 }}>
                   {selectedVehicle.make} {selectedVehicle.model}
                 </Title>
-                <Text type="secondary">
-                  {selectedVehicle.nickname || "N/A"}
-                </Text>
+                <Text type="secondary">{selectedVehicle.nickname || 'N/A'}</Text>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -372,31 +359,25 @@ const { Search } = Input;
                 <Text type="secondary" className="text-xs">
                   Vehicle Number
                 </Text>
-                <div className="font-medium">
-                  {selectedVehicle.vehicleNumber}
-                </div>
+                <div className="font-medium">{selectedVehicle.vehicleNumber}</div>
               </div>
               <div>
                 <Text type="secondary" className="text-xs">
                   Fuel Type
                 </Text>
-                <div className="capitalize">
-                  {selectedVehicle.fuelType || "N/A"}
-                </div>
+                <div className="capitalize">{selectedVehicle.fuelType || 'N/A'}</div>
               </div>
               <div>
                 <Text type="secondary" className="text-xs">
                   Status
                 </Text>
-                <div>{selectedVehicle.isActive ? "Active" : "Inactive"}</div>
+                <div>{selectedVehicle.isActive ? 'Active' : 'Inactive'}</div>
               </div>
               <div>
                 <Text type="secondary" className="text-xs">
                   Created On
                 </Text>
-                <div>
-                  {dayjs(selectedVehicle.createdAt).format("YYYY-MM-DD")}
-                </div>
+                <div>{dayjs(selectedVehicle.createdAt).format('YYYY-MM-DD')}</div>
               </div>
             </div>
           </Space>
